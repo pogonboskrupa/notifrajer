@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="theme-color" content="#0f0f0f"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="apple-mobile-web-app-title" content="PIN Podsjetnik"/>
+<link rel="manifest" href="manifest.json"/>
+<title>PIN Podsjetnik</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{background:#0f0f0f}
+body{background:#0f0f0f;color:#f0ede8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+button,input,select{font-family:inherit;font-size:inherit}
+
+/* Layout */
+.page{display:flex;flex-direction:column;min-height:100vh;max-width:430px;margin:0 auto;padding:0 16px 40px}
+.page-center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;max-width:430px;margin:0 auto;padding:0 24px 40px}
+
+/* Header */
+.header{display:flex;align-items:center;gap:12px;padding:24px 0 18px;border-bottom:1px solid #1c1c1c;margin-bottom:22px}
+.header-icon{width:36px;height:36px;background:#e24b4a;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.header-title{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.header-sub{font-size:11px;color:#e24b4a;margin-top:2px;letter-spacing:.5px}
+
+/* Card */
+.card{background:#141414;border:1px solid #222;border-radius:12px;padding:16px;margin-bottom:12px}
+.card-title{font-size:11px;font-weight:700;letter-spacing:1.4px;color:#666;text-transform:uppercase;margin-bottom:14px}
+
+/* Form */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;color:#666;margin-bottom:6px}
+.field input,.field select{width:100%;padding:11px 13px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:#f0ede8;font-size:15px;outline:none;-webkit-appearance:none;appearance:none;transition:border-color .2s}
+.field input:focus,.field select:focus{border-color:#e24b4a}
+.field input::placeholder{color:#3a3a3a}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Buttons */
+.btn-red{width:100%;padding:14px;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;background:#e24b4a;color:#fff;transition:opacity .15s}
+.btn-red:active{opacity:.8}
+.btn-red:disabled{opacity:.35;cursor:default}
+.btn-ghost{width:100%;padding:12px;border:1px solid #2a2a2a;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:#666;margin-top:10px}
+.btn-ghost:active{background:#1a1a1a}
+
+/* Tabs */
+.tabs{display:flex;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;margin-bottom:20px}
+.tab{flex:1;padding:11px 4px;text-align:center;font-size:13px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#555;position:relative;transition:all .15s}
+.tab.active{background:#e24b4a;color:#fff}
+.tab-badge{position:absolute;top:5px;right:6px;background:#fff;color:#e24b4a;font-size:10px;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700}
+
+/* PIN */
+.pin-dots{display:flex;gap:14px;justify-content:center;margin-bottom:28px}
+.dot{width:18px;height:18px;border-radius:50%;border:1.5px solid #2a2a2a;transition:all .15s}
+.dot.on{background:#e24b4a;border-color:#e24b4a;transform:scale(1.1)}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:290px;width:100%;margin:0 auto}
+.pkey{height:65px;border:1px solid #2a2a2a;background:#141414;border-radius:8px;font-size:22px;font-weight:700;cursor:pointer;color:#f0ede8;transition:background .1s}
+.pkey:active{background:#222}
+.pkey-del{font-size:14px;color:#555}
+.pkey-empty{visibility:hidden}
+
+/* Error */
+.err{font-size:13px;color:#e24b4a;text-align:center;min-height:20px;margin-bottom:12px}
+
+/* Reminder item */
+.ri{display:flex;align-items:flex-start;gap:11px;padding:13px;background:#141414;border:1px solid #1e1e1e;border-radius:12px;margin-bottom:9px}
+.ri-dot{width:8px;height:8px;border-radius:50%;background:#e24b4a;flex-shrink:0;margin-top:5px}
+.ri-dot.done{background:#333}
+.ri-body{flex:1;min-width:0}
+.ri-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.ri-meta{font-size:12px;color:#555}
+.ri-note{font-size:12px;color:#555;margin-top:3px}
+.ri-del{background:none;border:none;cursor:pointer;color:#333;font-size:20px;line-height:1;padding:2px 5px;flex-shrink:0;transition:color .15s}
+.ri-del:active{color:#e24b4a}
+
+/* Empty */
+.empty{text-align:center;padding:50px 0;color:#333}
+.empty-icon{font-size:36px;margin-bottom:12px;opacity:.3}
+
+/* Alarm screen */
+.alarm-page{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 20px 48px;background:#0f0f0f}
+.alarm-ring{width:86px;height:86px;border-radius:50%;background:rgba(226,75,74,.1);border:2px solid #e24b4a;display:flex;align-items:center;justify-content:center;margin-bottom:24px;animation:pulse .8s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+
+/* Banner */
+.banner{border-radius:8px;padding:11px 13px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-size:13px}
+.banner-warn{background:rgba(226,75,74,.1);border:1px solid #e24b4a;color:#f0ede8}
+.banner-info{background:#141414;border:1px solid #222;color:#666}
+.banner p{flex:1;line-height:1.5}
+.banner button{border:none;font-size:12px;font-weight:700;padding:6px 11px;border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.banner-warn button{background:#e24b4a;color:#fff}
+.banner-info button{background:#222;color:#f0ede8}
+
+/* Settings */
+.srow{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid #1e1e1e}
+.srow:last-child{border-bottom:none}
+.srow-label{font-size:14px;font-weight:700}
+.srow-sub{font-size:12px;color:#555;margin-top:2px}
+.srow button{font-size:13px;color:#e24b4a;font-weight:700;background:none;border:none;cursor:pointer;padding:2px 0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ── Globals ───────────────────────────────────────────────────────────────
+var APP = {
+  pin: '',
+  view: 'main',   // setup | main | alarm
+  tab: 'add',     // add | list | settings
+  alarm: null,
+  setupStep: 'set',
+  sp: '', sc: '', serr: '',
+  pinInput: '', perr: '',
+  addTitle: '', addNote: '', addTime: '', addRepeat: 'daily',
+  notifPerm: ('Notification' in window) ? Notification.permission : 'unsupported',
+  swReg: null
+};
+
+// ── Storage ───────────────────────────────────────────────────────────────
+function lsGet(k, d) {
+  try { var v = localStorage.getItem(k); return v !== null ? JSON.parse(v) : d; }
+  catch(e) { return d; }
+}
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} }
+function lsClear() { try { localStorage.clear(); } catch(e) {} }
+function getRems() { return lsGet('reminders', []); }
+function saveRems(r) { lsSet('reminders', r); }
+
+// ── Service Worker ────────────────────────────────────────────────────────
+function initSW() {
+  if (!navigator.serviceWorker) return;
+  navigator.serviceWorker.register('sw.js').then(function(reg) {
+    APP.swReg = reg;
+    navigator.serviceWorker.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'ALARM') triggerAlarm(e.data);
+    });
+  }).catch(function(e) { console.warn('SW:', e); });
+}
+function swPost(data) {
+  var c = navigator.serviceWorker && navigator.serviceWorker.controller;
+  if (c) c.postMessage(data);
+  else if (APP.swReg && APP.swReg.active) APP.swReg.active.postMessage(data);
+}
+function scheduleRem(r) {
+  var now = new Date(), fire = new Date();
+  var p = r.time.split(':');
+  fire.setHours(+p[0], +p[1], 0, 0);
+  if (fire <= now) fire.setDate(fire.getDate() + 1);
+  swPost({ type: 'SCHEDULE', id: r.id, title: r.title, note: r.note, fireAt: fire.getTime() });
+}
+function cancelRem(id) { swPost({ type: 'CANCEL', id: id }); }
+
+// ── Audio ─────────────────────────────────────────────────────────────────
+var audioCtx = null, alarmTimer = null;
+function playBeep() {
+  try {
+    if (!audioCtx || audioCtx.state === 'closed')
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    var t = audioCtx.currentTime;
+    [880, 1320, 880, 1320, 440].forEach(function(f, i) {
+      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      o.type = 'square'; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t + i*.18);
+      g.gain.linearRampToValueAtTime(.18, t + i*.18 + .04);
+      g.gain.linearRampToValueAtTime(0, t + i*.18 + .15);
+      o.start(t + i*.18); o.stop(t + i*.18 + .22);
+    });
+  } catch(e) {}
+}
+function startAlarm() { playBeep(); alarmTimer = setInterval(playBeep, 1400); }
+function stopAlarm() { clearInterval(alarmTimer); alarmTimer = null; }
+
+// ── Alarm trigger ─────────────────────────────────────────────────────────
+function triggerAlarm(data) {
+  var rems = getRems(), r = rems.filter(function(x){ return x.id == data.id; })[0];
+  APP.alarm = { id: data.id, title: data.title || (r&&r.title) || 'Podsjetnik', note: data.note || (r&&r.note) || '' };
+  if (r && r.repeat === 'once') saveRems(rems.map(function(x){ return x.id==data.id ? Object.assign({},x,{fired:true}) : x; }));
+  startAlarm();
+  render();
+}
+
+// ── Page check (fallback) ─────────────────────────────────────────────────
+setInterval(function() {
+  var now = new Date();
+  var key = pad(now.getHours()) + ':' + pad(now.getMinutes());
+  var wd = now.getDay();
+  getRems().forEach(function(r) {
+    if (r.fired || r.time !== key) return;
+    var ok = r.repeat==='once' || r.repeat==='daily' || (r.repeat==='weekdays' && wd>=1 && wd<=5);
+    if (!ok) return;
+    var fk = 'lf_'+r.id, td = now.toDateString()+key;
+    if (lsGet(fk,'') === td) return;
+    lsSet(fk, td);
+    triggerAlarm({ id: r.id, title: r.title, note: r.note||'' });
+  });
+}, 15000);
+
+// ── DOM helpers ───────────────────────────────────────────────────────────
+function pad(n) { return String(n).padStart(2,'0'); }
+function fmtTime(t) { var p=t.split(':'); return pad(p[0])+':'+p[1]; }
+function rl(r) { return r==='once'?'jednom':r==='daily'?'svaki dan':'radni dani'; }
+
+function mk(tag, attrs, children) {
+  var el = document.createElement(tag);
+  if (attrs) {
+    Object.keys(attrs).forEach(function(k) {
+      var v = attrs[k];
+      if (v == null) return;
+      if (k === 'class') el.className = v;
+      else if (k === 'style') el.setAttribute('style', v);
+      else if (k.substr(0,2) === 'on') el.addEventListener(k.substr(2), v);
+      else if (k === 'disabled') { if (v) el.disabled = true; }
+      else if (k === 'value' && (tag==='input'||tag==='select')) el.setAttribute('value', v);
+      else el.setAttribute(k, v);
+    });
+  }
+  if (children) {
+    children.forEach(function(c) {
+      if (c == null || c === false) return;
+      if (typeof c === 'string') el.appendChild(document.createTextNode(c));
+      else el.appendChild(c);
+    });
+  }
+  return el;
+}
+function txt(s) { return document.createTextNode(s); }
+function svgEl(path, size, col) {
+  var s = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  s.setAttribute('width', size||20); s.setAttribute('height', size||20);
+  s.setAttribute('viewBox','0 0 24 24'); s.setAttribute('fill','none');
+  s.setAttribute('stroke', col||'currentColor'); s.setAttribute('stroke-width','2');
+  s.setAttribute('stroke-linecap','round'); s.setAttribute('stroke-linejoin','round');
+  s.innerHTML = path; return s;
+}
+
+// Fix for select value (must set after appending to DOM or set selectedIndex)
+function sel(val, opts) {
+  var s = document.createElement('select');
+  s.style.width='100%'; s.style.padding='11px 13px'; s.style.background='#1a1a1a';
+  s.style.border='1px solid #2a2a2a'; s.style.borderRadius='8px';
+  s.style.color='#f0ede8'; s.style.fontSize='15px'; s.style.outline='none';
+  s.style.WebkitAppearance='none'; s.style.appearance='none';
+  opts.forEach(function(o) {
+    var opt = document.createElement('option');
+    opt.value = o[0]; opt.textContent = o[1];
+    if (o[0] === val) opt.selected = true;
+    s.appendChild(opt);
+  });
+  return s;
+}
+
+// ── PIN pad view ──────────────────────────────────────────────────────────
+function renderPinDots(filled, total) {
+  total = total || 6;
+  var wrap = mk('div',{class:'pin-dots'});
+  for (var i=0;i<total;i++) {
+    wrap.appendChild(mk('div',{class:'dot'+(i<filled?' on':'')}));
+  }
+  return wrap;
+}
+
+function renderPinPad(onDigit, onDel) {
+  var keys = ['1','2','3','4','5','6','7','8','9','','0','DEL'];
+  var pad = mk('div',{class:'pin-pad'});
+  keys.forEach(function(k) {
+    if (k==='') { pad.appendChild(mk('div',{class:'pkey pkey-empty'})); return; }
+    var label = k==='DEL'?'⌫':k;
+    var btn = mk('button',{class:'pkey'+(k==='DEL'?' pkey-del':'')});
+    btn.textContent = label;
+    btn.addEventListener('click', function(){ k==='DEL'?onDel():onDigit(k); });
+    pad.appendChild(btn);
+  });
+  return pad;
+}
+
+// ── Setup view ────────────────────────────────────────────────────────────
+function renderSetup() {
+  var isC = APP.setupStep === 'confirm';
+  var cur = isC ? APP.sc : APP.sp;
+
+  function onDigit(d) {
+    if (cur.length >= 6) return;
+    if (isC) APP.sc += d; else APP.sp += d;
+    APP.serr = '';
+    render();
+  }
+  function onDel() {
+    if (isC) APP.sc = APP.sc.slice(0,-1); else APP.sp = APP.sp.slice(0,-1);
+    APP.serr = '';
+    render();
+  }
+  function onNext() {
+    if (!isC) {
+      if (APP.sp.length < 4) { APP.serr = 'Minimum 4 broja'; render(); return; }
+      APP.setupStep = 'confirm'; APP.serr = ''; render();
+    } else {
+      if (APP.sc !== APP.sp) { APP.sc=''; APP.serr='PIN-ovi se ne podudaraju!'; render(); }
+      else { lsSet('app_pin', APP.sp); APP.pin=APP.sp; APP.sp=''; APP.sc=''; APP.setupStep='set'; APP.serr=''; APP.view='main'; render(); }
+    }
+  }
+
+  var wrap = mk('div',{class:'page-center'});
+  var inner = mk('div',{style:'width:100%;max-width:310px'});
+
+  // Header
+  var hdr = mk('div',{class:'header'});
+  var ico = mk('div',{class:'header-icon'});
+  ico.appendChild(svgEl('<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',18,'#fff'));
+  hdr.appendChild(ico);
+  var htxt = mk('div');
+  var ht1 = mk('div',{class:'header-title'}); ht1.textContent='PIN Podsjetnik'; htxt.appendChild(ht1);
+  var ht2 = mk('div',{class:'header-sub'}); ht2.textContent=APP.view==='setup'&&APP.pin?'PROMJENA PIN-A':'POSTAVLJANJE PIN-A'; htxt.appendChild(ht2);
+  hdr.appendChild(htxt);
+  inner.appendChild(hdr);
+
+  var h1 = mk('div',{style:'font-size:24px;font-weight:800;margin-bottom:8px'});
+  h1.textContent = isC ? 'Potvrdi PIN' : 'Postavi PIN';
+  inner.appendChild(h1);
+
+  var sub = mk('div',{style:'font-size:14px;color:#666;margin-bottom:30px;line-height:1.65'});
+  sub.textContent = isC ? 'Ponovi isti PIN za potvrdu.' : 'Ovaj PIN koristit ćeš za gašenje alarma. Min 4, max 6 brojeva.';
+  inner.appendChild(sub);
+
+  inner.appendChild(renderPinDots(cur.length));
+
+  var errEl = mk('div',{class:'err'}); errEl.textContent = APP.serr || '\u00a0'; inner.appendChild(errEl);
+
+  inner.appendChild(renderPinPad(onDigit, onDel));
+
+  var btnWrap = mk('div',{style:'margin-top:18px'});
+  var btn = mk('button',{class:'btn-red',disabled:cur.length<4});
+  btn.textContent = isC ? 'Spremi PIN' : 'Nastavi →';
+  btn.addEventListener('click', onNext);
+  btnWrap.appendChild(btn);
+
+  if (APP.pin && APP.view === 'setup') {
+    var cancel = mk('button',{class:'btn-ghost'});
+    cancel.textContent = 'Odustani';
+    cancel.addEventListener('click', function(){ APP.view='main'; render(); });
+    btnWrap.appendChild(cancel);
+  }
+  inner.appendChild(btnWrap);
+  wrap.appendChild(inner);
+  return wrap;
+}
+
+// ── Alarm view ────────────────────────────────────────────────────────────
+function renderAlarm() {
+  var now = new Date();
+  var ts = pad(now.getHours())+':'+pad(now.getMinutes());
+  var a = APP.alarm;
+
+  function onDigit(d) { if(APP.pinInput.length<6){ APP.pinInput+=d; APP.perr=''; render(); } }
+  function onDel() { APP.pinInput=APP.pinInput.slice(0,-1); APP.perr=''; render(); }
+  function tryDismiss() {
+    if (APP.pinInput === APP.pin) {
+      stopAlarm(); APP.alarm=null; APP.pinInput=''; APP.perr=''; APP.view='main'; render();
+    } else {
+      APP.pinInput=''; APP.perr='Pogrešan PIN!'; render();
+      var p = document.querySelector('.pin-pad');
+      if(p){ p.style.animation='shake .4s ease'; setTimeout(function(){p.style.animation='';},500); }
+    }
+  }
+
+  var page = mk('div',{class:'alarm-page'});
+  var ring = mk('div',{class:'alarm-ring'});
+  ring.appendChild(svgEl('<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',36,'#e24b4a'));
+  page.appendChild(ring);
+
+  var tsEl = mk('div',{style:'font-size:13px;color:#e24b4a;letter-spacing:2px;margin-bottom:10px'}); tsEl.textContent=ts; page.appendChild(tsEl);
+  var titleEl = mk('div',{style:'font-size:26px;font-weight:800;text-align:center;margin-bottom:8px'}); titleEl.textContent=a.title; page.appendChild(titleEl);
+  if(a.note){ var noteEl=mk('div',{style:'font-size:14px;color:#666;text-align:center;margin-bottom:28px;line-height:1.5'}); noteEl.textContent=a.note; page.appendChild(noteEl); }
+
+  var lbl = mk('div',{style:'font-size:13px;color:#666;margin-bottom:22px'}); lbl.textContent='Unesi PIN za gašenje alarma'; page.appendChild(lbl);
+  page.appendChild(renderPinDots(APP.pinInput.length));
+  var errEl = mk('div',{class:'err'}); errEl.textContent=APP.perr||'\u00a0'; page.appendChild(errEl);
+  page.appendChild(renderPinPad(onDigit, onDel));
+
+  var btnWrap = mk('div',{style:'margin-top:18px;width:100%;max-width:290px'});
+  var btn = mk('button',{class:'btn-red',disabled:APP.pinInput.length<4});
+  btn.textContent='Potvrdi PIN';
+  btn.addEventListener('click', tryDismiss);
+  btnWrap.appendChild(btn);
+  page.appendChild(btnWrap);
+  return page;
+}
+
+// ── Main view ─────────────────────────────────────────────────────────────
+function renderMain() {
+  var rems = getRems();
+  var active = rems.filter(function(r){ return !r.fired; });
+  var page = mk('div',{class:'page'});
+
+  // Header
+  var hdr = mk('div',{class:'header'});
+  var ico = mk('div',{class:'header-icon'});
+  ico.appendChild(svgEl('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',18,'#fff'));
+  hdr.appendChild(ico);
+  var htxt = mk('div');
+  var ht1=mk('div',{class:'header-title'}); ht1.textContent='PIN Podsjetnik'; htxt.appendChild(ht1);
+  var ht2=mk('div',{class:'header-sub'}); ht2.textContent='● AKTIVAN'; htxt.appendChild(ht2);
+  hdr.appendChild(htxt);
+  page.appendChild(hdr);
+
+  // Notification banner
+  if (APP.notifPerm === 'default') {
+    var bn = mk('div',{class:'banner banner-warn'});
+    var bp = mk('p'); bp.textContent='⚠ Dozvoli notifikacije za rad u pozadini.'; bn.appendChild(bp);
+    var bb = mk('button'); bb.textContent='Dozvoli';
+    bb.addEventListener('click', function(){
+      Notification.requestPermission().then(function(p){ APP.notifPerm=p; render(); });
+    });
+    bn.appendChild(bb);
+    page.appendChild(bn);
+  }
+
+  // Tabs
+  var tabsEl = mk('div',{class:'tabs'});
+  [['add','+ Dodaj'],['list','Lista'],['settings','⚙']].forEach(function(pair){
+    var t = mk('button',{class:'tab'+(APP.tab===pair[0]?' active':'')});
+    t.textContent = pair[1];
+    if (pair[0]==='list' && active.length>0) {
+      var badge = mk('span',{class:'tab-badge'}); badge.textContent=String(active.length); t.appendChild(badge);
+    }
+    t.addEventListener('click', function(){ APP.tab=pair[0]; render(); });
+    tabsEl.appendChild(t);
+  });
+  page.appendChild(tabsEl);
+
+  // ── ADD TAB ──
+  if (APP.tab === 'add') {
+    var card = mk('div',{class:'card'});
+    var ct = mk('div',{class:'card-title'}); ct.textContent='Novi podsjetnik'; card.appendChild(ct);
+
+    // Title field
+    var f1 = mk('div',{class:'field'});
+    var l1=mk('label'); l1.textContent='Naziv *'; f1.appendChild(l1);
+    var inp1=mk('input',{type:'text',placeholder:'npr. Popij lijek, Sastanak...'});
+    inp1.value = APP.addTitle;
+    inp1.addEventListener('input', function(){ APP.addTitle=this.value; });
+    f1.appendChild(inp1); card.appendChild(f1);
+
+    // Note field
+    var f2 = mk('div',{class:'field'});
+    var l2=mk('label'); l2.textContent='Napomena'; f2.appendChild(l2);
+    var inp2=mk('input',{type:'text',placeholder:'Detalji...'});
+    inp2.value = APP.addNote;
+    inp2.addEventListener('input', function(){ APP.addNote=this.value; });
+    f2.appendChild(inp2); card.appendChild(f2);
+
+    // Time + Repeat
+    var row = mk('div',{class:'row2'});
+    var f3=mk('div',{class:'field'}); var l3=mk('label'); l3.textContent='Vrijeme *'; f3.appendChild(l3);
+    var inp3=mk('input',{type:'time'}); inp3.value=APP.addTime;
+    inp3.addEventListener('input', function(){ APP.addTime=this.value; });
+    f3.appendChild(inp3); row.appendChild(f3);
+
+    var f4=mk('div',{class:'field'}); var l4=mk('label'); l4.textContent='Ponavljanje'; f4.appendChild(l4);
+    var selEl=sel(APP.addRepeat,[['once','Jednom'],['daily','Svaki dan'],['weekdays','Radni dani']]);
+    selEl.addEventListener('change', function(){ APP.addRepeat=this.value; });
+    f4.appendChild(selEl); row.appendChild(f4);
+    card.appendChild(row);
+
+    var addBtn = mk('button',{class:'btn-red',disabled:(!APP.addTitle.trim()||!APP.addTime)});
+    addBtn.textContent='Postavi podsjetnik';
+    addBtn.addEventListener('click', function(){
+      if(!APP.addTitle.trim()||!APP.addTime) return;
+      var r={id:Date.now(),title:APP.addTitle.trim(),note:APP.addNote.trim(),time:APP.addTime,repeat:APP.addRepeat,fired:false};
+      saveRems(getRems().concat([r]));
+      scheduleRem(r);
+      APP.addTitle=''; APP.addNote=''; APP.addTime=''; APP.addRepeat='daily'; APP.tab='list';
+      render();
+    });
+    card.appendChild(addBtn);
+    page.appendChild(card);
+  }
+
+  // ── LIST TAB ──
+  if (APP.tab === 'list') {
+    if (rems.length === 0) {
+      var emp = mk('div',{class:'empty'});
+      var eico=mk('div',{class:'empty-icon'}); eico.textContent='○'; emp.appendChild(eico);
+      var ep=mk('p',{style:'font-size:14px;line-height:1.7;color:#444'}); ep.textContent='Nema podsjetnika. Dodaj ih u tabu + Dodaj.'; emp.appendChild(ep);
+      page.appendChild(emp);
+    } else {
+      rems.forEach(function(r) {
+        var ri = mk('div',{class:'ri'});
+        var rdot = mk('div',{class:'ri-dot'+(r.fired?' done':'')}); ri.appendChild(rdot);
+        var rb = mk('div',{class:'ri-body'});
+        var rn=mk('div',{class:'ri-name'}); rn.textContent=r.title; rb.appendChild(rn);
+        var rm=mk('div',{class:'ri-meta'}); rm.textContent=fmtTime(r.time)+' · '+rl(r.repeat)+(r.fired?' · ✓':''); rb.appendChild(rm);
+        if(r.note){ var rno=mk('div',{class:'ri-note'}); rno.textContent=r.note; rb.appendChild(rno); }
+        ri.appendChild(rb);
+        var rdel=mk('button',{class:'ri-del'}); rdel.textContent='×';
+        rdel.addEventListener('click', (function(rid){ return function(){ cancelRem(rid); saveRems(getRems().filter(function(x){return x.id!==rid;})); render(); }; })(r.id));
+        ri.appendChild(rdel);
+        page.appendChild(ri);
+      });
+    }
+  }
+
+  // ── SETTINGS TAB ──
+  if (APP.tab === 'settings') {
+    var sc = mk('div',{class:'card'});
+    var sct=mk('div',{class:'card-title'}); sct.textContent='Sigurnost'; sc.appendChild(sct);
+
+    var row1=mk('div',{class:'srow'});
+    var rl1=mk('div'); var rll1=mk('div',{class:'srow-label'}); rll1.textContent='PIN kod'; rl1.appendChild(rll1);
+    var rls1=mk('div',{class:'srow-sub'}); rls1.textContent='●'.repeat(Math.max(4,APP.pin.length)); rl1.appendChild(rls1);
+    row1.appendChild(rl1);
+    var rb1=mk('button'); rb1.textContent='Promijeni';
+    rb1.addEventListener('click', function(){ APP.setupStep='set'; APP.sp=''; APP.sc=''; APP.serr=''; APP.view='setup'; render(); });
+    row1.appendChild(rb1); sc.appendChild(row1);
+
+    var row2=mk('div',{class:'srow'});
+    var rl2=mk('div'); var rll2=mk('div',{class:'srow-label'}); rll2.textContent='Obriši sve'; rl2.appendChild(rll2);
+    var rls2=mk('div',{class:'srow-sub'}); rls2.textContent='Briše PIN i podsjetnike'; rl2.appendChild(rls2);
+    row2.appendChild(rl2);
+    var rb2=mk('button'); rb2.textContent='Obriši';
+    rb2.addEventListener('click', function(){
+      if(!confirm('Obrisati sve podatke?')) return;
+      swPost({type:'CANCEL_ALL'}); lsClear(); location.reload();
+    });
+    row2.appendChild(rb2); sc.appendChild(row2);
+    page.appendChild(sc);
+
+    var nc = mk('div',{class:'card'});
+    var nct=mk('div',{class:'card-title'}); nct.textContent='Notifikacije'; nc.appendChild(nct);
+    var nrow=mk('div',{class:'srow'});
+    var nrl=mk('div'); var nrll=mk('div',{class:'srow-label'}); nrll.textContent='Status'; nrl.appendChild(nrll);
+    var nrls=mk('div',{class:'srow-sub'});
+    nrls.textContent = APP.notifPerm==='granted'?'Dozvoljeno ✓':APP.notifPerm==='denied'?'Blokirano':'Nije postavljeno';
+    nrl.appendChild(nrls); nrow.appendChild(nrl);
+    if(APP.notifPerm==='default'){
+      var nb=mk('button'); nb.textContent='Dozvoli';
+      nb.addEventListener('click', function(){ Notification.requestPermission().then(function(p){ APP.notifPerm=p; render(); }); });
+      nrow.appendChild(nb);
+    }
+    nc.appendChild(nrow);
+    page.appendChild(nc);
+
+    var inf=mk('div',{class:'card',style:'border-color:transparent'});
+    var infp=mk('p',{style:'font-size:12px;color:#333;line-height:1.7'});
+    infp.textContent='Za pozadinske notifikacije: instaliraj app (Add to Home Screen) i dozvoli notifikacije. Podaci su lokalni na uređaju.';
+    inf.appendChild(infp); page.appendChild(inf);
+  }
+
+  return page;
+}
+
+// ── Main render ───────────────────────────────────────────────────────────
+function render() {
+  var app = document.getElementById('app');
+  app.innerHTML = '';
+  var view;
+  if (APP.alarm) view = renderAlarm();
+  else if (!APP.pin) view = renderSetup();
+  else if (APP.view === 'setup') view = renderSetup();
+  else view = renderMain();
+  app.appendChild(view);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+APP.pin = lsGet('app_pin','');
+initSW();
+getRems().filter(function(r){ return !r.fired; }).forEach(scheduleRem);
+render(); // immediate, synchronous, no dependencies
+</script>
+</body>
+</html>

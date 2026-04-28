@@ -1,0 +1,33 @@
+{
+  "name": "PIN Podsjetnik",
+  "short_name": "Podsjetnik",
+  "description": "Podsjetnik zaštićen PIN-om — alarm se ne može ugasiti bez ispravnog koda.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0f0f",
+  "theme_color": "#0f0f0f",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dodaj podsjetnik",
+      "short_name": "Dodaj",
+      "url": "/?action=add",
+      "icons": [{ "src": "/icon-192.svg", "sizes": "192x192" }]
+    }
+  ]
+}
