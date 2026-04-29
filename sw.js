@@ -18,11 +18,11 @@ self.addEventListener('activate', e => {
   );
 });
 
-// ── Persistent schedule store (uses Cache API as key-value store) ──────────
+// ── Persistent schedule store (Cache API as key-value) ─────────────────────
 async function saveSchedule(id, data) {
   const c = await caches.open(SCHEDULE_CACHE);
-  const body = JSON.stringify(data);
-  await c.put(new Request('schedule/' + id), new Response(body, { headers: { 'Content-Type': 'application/json' } }));
+  await c.put(new Request('schedule/' + id),
+    new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json' } }));
 }
 async function deleteSchedule(id) {
   const c = await caches.open(SCHEDULE_CACHE);
@@ -34,9 +34,7 @@ async function getAllSchedules() {
   const results = [];
   for (const req of keys) {
     const res = await c.match(req);
-    if (res) {
-      try { results.push(await res.json()); } catch(e) {}
-    }
+    if (res) { try { results.push(await res.json()); } catch(e) {} }
   }
   return results;
 }
@@ -44,54 +42,69 @@ async function clearAllSchedules() {
   await caches.delete(SCHEDULE_CACHE);
 }
 
-// ── Scheduled notification timers ─────────────────────────────────────────
+// ── Show a persistent "pending" notification (silent, appears immediately) ─
+async function showPendingNotification(id, title, note, time) {
+  await self.registration.showNotification('📌 ' + title, {
+    body: 'Alarm u ' + time + (note ? ' · ' + note : ''),
+    icon: './icon-192.png',
+    badge: './icon-192.png',
+    tag: 'reminder-' + id,
+    requireInteraction: true,
+    silent: true,
+    data: { reminderId: id, title, note, time, state: 'pending' }
+  });
+}
+
+// ── Show the active alarm notification (sound + vibration) ────────────────
+async function showAlarmNotification(id, title, note) {
+  await self.registration.showNotification('🔔 ' + title, {
+    body: (note ? note + '\n' : '') + 'Unesi PIN za gašenje alarma.',
+    icon: './icon-192.png',
+    badge: './icon-192.png',
+    tag: 'reminder-' + id,
+    requireInteraction: true,
+    silent: false,
+    vibrate: [300, 150, 300, 150, 600],
+    actions: [{ action: 'open', title: 'Unesi PIN' }],
+    data: { reminderId: id, title, note, state: 'alarm' }
+  });
+}
+
+// ── Timers ─────────────────────────────────────────────────────────────────
 const timers = {};
 
-function setTimer(id, title, note, fireAt) {
+function setAlarmTimer(id, title, note, time, fireAt) {
   if (timers[id]) clearTimeout(timers[id]);
   const delay = fireAt - Date.now();
   if (delay < 0) return;
   timers[id] = setTimeout(async () => {
     delete timers[id];
     await deleteSchedule(id);
-    self.registration.showNotification('🔔 ' + title, {
-      body: note || 'Tvoj podsjetnik je aktivan.',
-      icon: './icon-192.png',
-      badge: './icon-192.png',
-      tag: 'reminder-' + id,
-      requireInteraction: true,
-      silent: false,
-      vibrate: [200, 100, 200, 100, 200],
-      actions: [{ action: 'open', title: 'Unesi PIN' }],
-      data: { reminderId: id, title, note }
-    });
+    // Replace pending notification with alarm notification
+    await showAlarmNotification(id, title, note);
+    // Notify any open app windows
+    const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const w of list) w.postMessage({ type: 'ALARM', id, title, note });
   }, delay);
 }
 
+// ── Restore schedules after SW restart ─────────────────────────────────────
 async function restoreSchedules() {
   const schedules = await getAllSchedules();
   const now = Date.now();
   for (const s of schedules) {
     if (s.fireAt > now) {
-      setTimer(s.id, s.title, s.note, s.fireAt);
+      // Re-show the pending notification (in case it was dismissed while SW was dead)
+      await showPendingNotification(s.id, s.title, s.note, s.time);
+      setAlarmTimer(s.id, s.title, s.note, s.time, s.fireAt);
+    } else if (now - s.fireAt < 10 * 60 * 1000) {
+      // Missed alarm within 10 min — fire it now
+      await deleteSchedule(s.id);
+      await showAlarmNotification(s.id, s.title, s.note);
+      const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const w of list) w.postMessage({ type: 'ALARM', id: s.id, title: s.title, note: s.note });
     } else {
-      // Missed — fire immediately for reminders that are very recent (within 5 min)
-      if (now - s.fireAt < 5 * 60 * 1000) {
-        await deleteSchedule(s.id);
-        self.registration.showNotification('🔔 ' + s.title, {
-          body: s.note || 'Tvoj podsjetnik je aktivan.',
-          icon: './icon-192.png',
-          badge: './icon-192.png',
-          tag: 'reminder-' + s.id,
-          requireInteraction: true,
-          silent: false,
-          vibrate: [200, 100, 200, 100, 200],
-          actions: [{ action: 'open', title: 'Unesi PIN' }],
-          data: { reminderId: s.id, title: s.title, note: s.note }
-        });
-      } else {
-        await deleteSchedule(s.id);
-      }
+      await deleteSchedule(s.id);
     }
   }
 }
@@ -111,43 +124,63 @@ self.addEventListener('fetch', e => {
 });
 
 // ── Messages from page ─────────────────────────────────────────────────────
-self.addEventListener('message', e => {
+self.addEventListener('message', async e => {
   const { type } = e.data;
 
   if (type === 'SCHEDULE') {
-    const { id, title, note, fireAt } = e.data;
-    saveSchedule(id, { id, title, note, fireAt });
-    setTimer(id, title, note, fireAt);
+    const { id, title, note, time, fireAt } = e.data;
+    await saveSchedule(id, { id, title, note, time, fireAt });
+    // Show notification immediately so it's visible in the notification bar
+    await showPendingNotification(id, title, note, time);
+    setAlarmTimer(id, title, note, time, fireAt);
+  }
+
+  if (type === 'DISMISS') {
+    // Called after correct PIN entered — close the notification
+    const { id } = e.data;
+    const notifs = await self.registration.getNotifications({ tag: 'reminder-' + id });
+    for (const n of notifs) n.close();
   }
 
   if (type === 'CANCEL') {
     const { id } = e.data;
     if (timers[id]) { clearTimeout(timers[id]); delete timers[id]; }
-    deleteSchedule(id);
+    await deleteSchedule(id);
+    const notifs = await self.registration.getNotifications({ tag: 'reminder-' + id });
+    for (const n of notifs) n.close();
   }
 
   if (type === 'CANCEL_ALL') {
     Object.keys(timers).forEach(id => clearTimeout(timers[id]));
     Object.keys(timers).forEach(id => delete timers[id]);
-    clearAllSchedules();
+    await clearAllSchedules();
+    const notifs = await self.registration.getNotifications();
+    for (const n of notifs) n.close();
   }
 });
 
 // ── Notification click → open app ─────────────────────────────────────────
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const { reminderId, title, note } = e.notification.data || {};
-  const payload = JSON.stringify({ type: 'ALARM', id: reminderId, title, note });
+  const { reminderId, title, note, state } = e.notification.data || {};
 
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const openAndSignal = async (win) => {
+        await win.focus();
+        // Only trigger alarm UI if this is an active alarm, not a pending reminder
+        if (state === 'alarm') {
+          win.postMessage({ type: 'ALARM', id: reminderId, title, note });
+        }
+      };
       if (list.length > 0) {
-        const win = list[0];
-        win.focus();
-        win.postMessage({ type: 'ALARM', id: reminderId, title, note });
-      } else {
-        clients.openWindow('./?alarm=' + encodeURIComponent(payload));
+        return openAndSignal(list[0]);
       }
+      // App is closed — open it with URL param so it knows what to do
+      const url = state === 'alarm'
+        ? './?alarm=' + encodeURIComponent(JSON.stringify({ type: 'ALARM', id: reminderId, title, note }))
+        : './';
+      return clients.openWindow(url);
     })
   );
 });
