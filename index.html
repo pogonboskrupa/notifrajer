@@ -172,7 +172,7 @@ function scheduleRem(r) {
   var p = r.time.split(':');
   fire.setHours(+p[0], +p[1], 0, 0);
   if (fire <= now) fire.setDate(fire.getDate() + 1);
-  swPost({ type: 'SCHEDULE', id: r.id, title: r.title, note: r.note, fireAt: fire.getTime() });
+  swPost({ type: 'SCHEDULE', id: r.id, title: r.title, note: r.note, time: r.time, fireAt: fire.getTime() });
 }
 function cancelRem(id) { swPost({ type: 'CANCEL', id: id }); }
 
@@ -382,7 +382,15 @@ function renderAlarm() {
   function onDel() { APP.pinInput=APP.pinInput.slice(0,-1); APP.perr=''; render(); }
   function tryDismiss() {
     if (APP.pinInput === APP.pin) {
-      stopAlarm(); APP.alarm=null; APP.pinInput=''; APP.perr=''; APP.view='main'; render();
+      stopAlarm();
+      // Close the persistent notification
+      swPost({ type: 'DISMISS', id: APP.alarm.id });
+      // Reschedule repeating reminders for next occurrence
+      var dismissed = APP.alarm.id;
+      var rems = getRems();
+      var rem = rems.filter(function(x){ return x.id == dismissed; })[0];
+      if (rem && rem.repeat !== 'once' && !rem.fired) scheduleRem(rem);
+      APP.alarm=null; APP.pinInput=''; APP.perr=''; APP.view='main'; render();
     } else {
       APP.pinInput=''; APP.perr='Pogrešan PIN!'; render();
       var p = document.querySelector('.pin-pad');
