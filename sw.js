@@ -161,7 +161,7 @@ self.addEventListener('message', async e => {
 
 // ── Notification click → open app ─────────────────────────────────────────
 self.addEventListener('notificationclick', e => {
-  e.notification.close();
+  // Do NOT close the notification here — it stays until correct PIN is entered
   const { reminderId, title, note, state } = e.notification.data || {};
 
   e.waitUntil(
