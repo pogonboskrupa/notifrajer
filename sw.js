@@ -44,30 +44,34 @@ async function clearAllSchedules() {
 
 // ── Show a persistent "pending" notification (silent, appears immediately) ─
 async function showPendingNotification(id, title, note, time) {
-  await self.registration.showNotification('📌 ' + title, {
-    body: 'Alarm u ' + time + (note ? ' · ' + note : ''),
-    icon: './icon-192.png',
-    badge: './icon-192.png',
-    tag: 'reminder-' + id,
-    requireInteraction: true,
-    silent: true,
-    data: { reminderId: id, title, note, time, state: 'pending' }
-  });
+  try {
+    await self.registration.showNotification('📌 ' + title, {
+      body: 'Alarm u ' + time + (note ? ' · ' + note : ''),
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag: 'reminder-' + id,
+      requireInteraction: true,
+      silent: true,
+      data: { reminderId: id, title, note, time, state: 'pending' }
+    });
+  } catch(_) {}
 }
 
 // ── Show the active alarm notification (sound + vibration) ────────────────
 async function showAlarmNotification(id, title, note) {
-  await self.registration.showNotification('🔔 ' + title, {
-    body: (note ? note + '\n' : '') + 'Unesi PIN za gašenje alarma.',
-    icon: './icon-192.png',
-    badge: './icon-192.png',
-    tag: 'reminder-' + id,
-    requireInteraction: true,
-    silent: false,
-    vibrate: [300, 150, 300, 150, 600],
-    actions: [{ action: 'open', title: 'Unesi PIN' }],
-    data: { reminderId: id, title, note, state: 'alarm' }
-  });
+  try {
+    await self.registration.showNotification('🔔 ' + title, {
+      body: (note ? note + '\n' : '') + 'Unesi PIN za gašenje alarma.',
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag: 'reminder-' + id,
+      requireInteraction: true,
+      silent: false,
+      vibrate: [300, 150, 300, 150, 600],
+      actions: [{ action: 'open', title: 'Unesi PIN' }],
+      data: { reminderId: id, title, note, state: 'alarm' }
+    });
+  } catch(_) {}
 }
 
 // ── Timers ─────────────────────────────────────────────────────────────────
@@ -165,22 +169,21 @@ self.addEventListener('notificationclick', e => {
   const { reminderId, title, note, state } = e.notification.data || {};
 
   e.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      const openAndSignal = async (win) => {
-        await win.focus();
-        // Only trigger alarm UI if this is an active alarm, not a pending reminder
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async list => {
+      if (list.length > 0) {
+        const win = list[0];
+        try { await win.focus(); } catch(_) {}
+        // Always post ALARM for alarm-state notifications regardless of focus result
         if (state === 'alarm') {
           win.postMessage({ type: 'ALARM', id: reminderId, title, note });
         }
-      };
-      if (list.length > 0) {
-        return openAndSignal(list[0]);
+      } else {
+        // App is closed — open it; URL param triggers alarm UI on load
+        const url = state === 'alarm'
+          ? './?alarm=' + encodeURIComponent(JSON.stringify({ type: 'ALARM', id: reminderId, title, note }))
+          : './';
+        await clients.openWindow(url);
       }
-      // App is closed — open it with URL param so it knows what to do
-      const url = state === 'alarm'
-        ? './?alarm=' + encodeURIComponent(JSON.stringify({ type: 'ALARM', id: reminderId, title, note }))
-        : './';
-      return clients.openWindow(url);
     })
   );
 });

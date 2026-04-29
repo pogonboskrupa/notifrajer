@@ -153,13 +153,16 @@ window.addEventListener('appinstalled', function() {
 });
 
 // ── Service Worker ────────────────────────────────────────────────────────
+// Message listener at top level — never misses messages regardless of timing
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'ALARM') triggerAlarm(e.data);
+  });
+}
 function initSW() {
   if (!navigator.serviceWorker) return;
   navigator.serviceWorker.register('sw.js').then(function(reg) {
     APP.swReg = reg;
-    navigator.serviceWorker.addEventListener('message', function(e) {
-      if (e.data && e.data.type === 'ALARM') triggerAlarm(e.data);
-    });
   }).catch(function(e) { console.warn('SW:', e); });
 }
 function swPost(data) {
@@ -642,8 +645,8 @@ getRems().filter(function(r){ return !r.fired; }).forEach(scheduleRem);
     try {
       var d = JSON.parse(decodeURIComponent(alarmParam));
       if (d && d.type === 'ALARM') {
-        // Delay so SW message listener is set up first
-        setTimeout(function() { triggerAlarm(d); }, 100);
+        // Delay to let the page fully render before showing alarm screen
+        setTimeout(function() { triggerAlarm(d); }, 300);
       }
     } catch(e) {}
     history.replaceState(null, '', location.pathname);
