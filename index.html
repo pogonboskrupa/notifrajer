@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
 <meta name="apple-mobile-web-app-title" content="PIN Podsjetnik"/>
 <link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="apple-touch-icon.png"/>
 <title>PIN Podsjetnik</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -99,6 +100,16 @@ button,input,select{font-family:inherit;font-size:inherit}
 .srow-label{font-size:14px;font-weight:700}
 .srow-sub{font-size:12px;color:#555;margin-top:2px}
 .srow button{font-size:13px;color:#e24b4a;font-weight:700;background:none;border:none;cursor:pointer;padding:2px 0}
+
+/* Install prompt */
+.install-bar{position:fixed;bottom:0;left:0;right:0;background:#141414;border-top:1px solid #2a2a2a;padding:14px 16px;display:flex;align-items:center;gap:12px;z-index:100;max-width:430px;margin:0 auto}
+.install-bar-icon{width:40px;height:40px;border-radius:10px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.install-bar-icon img{width:100%;height:100%;border-radius:10px}
+.install-bar-text{flex:1;min-width:0}
+.install-bar-text strong{display:block;font-size:13px;font-weight:700}
+.install-bar-text span{font-size:11px;color:#555}
+.install-bar-btn{background:#e24b4a;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0}
+.install-bar-close{background:none;border:none;color:#444;font-size:20px;cursor:pointer;padding:4px;flex-shrink:0;line-height:1}
 </style>
 </head>
 <body>
@@ -115,7 +126,9 @@ var APP = {
   pinInput: '', perr: '',
   addTitle: '', addNote: '', addTime: '', addRepeat: 'daily',
   notifPerm: ('Notification' in window) ? Notification.permission : 'unsupported',
-  swReg: null
+  swReg: null,
+  installPrompt: null,  // deferred beforeinstallprompt event
+  installDismissed: false
 };
 
 // ── Storage ───────────────────────────────────────────────────────────────
@@ -127,6 +140,17 @@ function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch
 function lsClear() { try { localStorage.clear(); } catch(e) {} }
 function getRems() { return lsGet('reminders', []); }
 function saveRems(r) { lsSet('reminders', r); }
+
+// ── Install prompt ────────────────────────────────────────────────────────
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  APP.installPrompt = e;
+  if (!APP.installDismissed) render();
+});
+window.addEventListener('appinstalled', function() {
+  APP.installPrompt = null;
+  render();
+});
 
 // ── Service Worker ────────────────────────────────────────────────────────
 function initSW() {
@@ -549,6 +573,37 @@ function renderMain() {
     inf.appendChild(infp); page.appendChild(inf);
   }
 
+  // Install prompt banner
+  if (APP.installPrompt && !APP.installDismissed) {
+    var ib = mk('div',{class:'install-bar'});
+    var iico = mk('div',{class:'install-bar-icon'});
+    var iimg = mk('img',{src:'icon-192.png',alt:''}); iico.appendChild(iimg); ib.appendChild(iico);
+    var itxt = mk('div',{class:'install-bar-text'});
+    var is1 = mk('strong'); is1.textContent='Instaliraj aplikaciju'; itxt.appendChild(is1);
+    var is2 = mk('span'); is2.textContent='Dodaj na početni ekran'; itxt.appendChild(is2);
+    ib.appendChild(itxt);
+    var ibtn = mk('button',{class:'install-bar-btn'}); ibtn.textContent='Instaliraj';
+    ibtn.addEventListener('click', function(){
+      var p = APP.installPrompt;
+      if (!p) return;
+      p.prompt();
+      p.userChoice.then(function(r){
+        APP.installPrompt = null;
+        if (r.outcome !== 'accepted') { APP.installDismissed = true; lsSet('install_dismissed', true); }
+        render();
+      });
+    });
+    ib.appendChild(ibtn);
+    var iclose = mk('button',{class:'install-bar-close'}); iclose.textContent='×';
+    iclose.addEventListener('click', function(){
+      APP.installDismissed = true; lsSet('install_dismissed', true); render();
+    });
+    ib.appendChild(iclose);
+    page.appendChild(ib);
+    // Add bottom padding so content isn't hidden behind the bar
+    page.style.paddingBottom = '100px';
+  }
+
   return page;
 }
 
@@ -566,8 +621,30 @@ function render() {
 
 // ── Init ──────────────────────────────────────────────────────────────────
 APP.pin = lsGet('app_pin','');
+APP.installDismissed = !!lsGet('install_dismissed', false);
 initSW();
 getRems().filter(function(r){ return !r.fired; }).forEach(scheduleRem);
+
+// Handle URL parameters from notification click or shortcut
+(function() {
+  var params = new URLSearchParams(location.search);
+  var alarmParam = params.get('alarm');
+  var actionParam = params.get('action');
+  if (alarmParam) {
+    try {
+      var d = JSON.parse(decodeURIComponent(alarmParam));
+      if (d && d.type === 'ALARM') {
+        // Delay so SW message listener is set up first
+        setTimeout(function() { triggerAlarm(d); }, 100);
+      }
+    } catch(e) {}
+    history.replaceState(null, '', location.pathname);
+  } else if (actionParam === 'add' && APP.pin) {
+    APP.tab = 'add';
+    history.replaceState(null, '', location.pathname);
+  }
+})();
+
 render(); // immediate, synchronous, no dependencies
 </script>
 </body>
