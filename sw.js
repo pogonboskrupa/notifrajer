@@ -1,4 +1,4 @@
-const CACHE = 'pin-reminder-v9';
+const CACHE = 'pin-reminder-v10';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.svg', './icon-512.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const SCHEDULE_CACHE = 'pin-reminder-schedules';
 
