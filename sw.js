@@ -1,4 +1,4 @@
-const CACHE = 'pin-reminder-v12';
+const CACHE = 'pin-reminder-v13';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.svg', './icon-512.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const SCHEDULE_CACHE = 'pin-reminder-schedules';
 
@@ -45,6 +45,12 @@ async function clearAllSchedules() {
 // Far-future items (calendar tasks months out) must not sit in the tray for
 // months — the pending pin only appears once the alarm is within a day.
 const PENDING_WINDOW_MS = 24 * 60 * 60 * 1000;
+// How far past its fire time a missed alarm still gets caught up when the SW
+// wakes back up (app opened, notification tapped, etc). The Android OS can
+// kill a backgrounded SW indefinitely with nothing to wake it up in between,
+// so 10 minutes was too tight — widened so "opened the app hours later"
+// still surfaces the alarm instead of silently losing it.
+const MISSED_ALARM_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 async function maybeShowPending(id, title, note, time, fireAt) {
   if (fireAt - Date.now() <= PENDING_WINDOW_MS) {
@@ -83,10 +89,13 @@ async function showPendingNotification(id, title, note, time) {
 }
 
 // ── Show the active alarm notification (sound + vibration) ────────────────
-async function showAlarmNotification(id, title, note) {
+// late=true means this fired from the missed-alarm catch-up path (the SW was
+// killed in the background and only woke up once the app was reopened) —
+// says so explicitly, since the vibration/sound won't have happened on time.
+async function showAlarmNotification(id, title, note, late) {
   try {
     await self.registration.showNotification('🔔 ' + title, {
-      body: (note ? note + '\n' : '') + 'Unesi PIN za gašenje alarma.',
+      body: (late ? '⏰ Zakasnio alarm — ' : '') + (note ? note + '\n' : '') + 'Unesi PIN za gašenje alarma.',
       icon: './icon-192.png',
       badge: './icon-192.png',
       tag: 'reminder-' + id,
@@ -146,12 +155,15 @@ async function restoreSchedules() {
       // Re-show the pending notification (in case it was dismissed while SW was dead)
       await maybeShowPending(s.id, s.title, s.note, s.time, s.fireAt);
       setAlarmTimer(s.id, s.title, s.note, s.time, s.fireAt);
-    } else if (now - s.fireAt < 10 * 60 * 1000) {
-      // Missed alarm within 10 min — fire it now
+    } else if (now - s.fireAt < MISSED_ALARM_WINDOW_MS) {
+      // The SW was almost certainly killed by the OS while backgrounded, so
+      // the setTimeout in setAlarmTimer never got to fire on time — this is
+      // the only chance to catch up. Surface it late rather than silently
+      // drop it; a delayed PIN alarm still beats no alarm at all.
       await deleteSchedule(s.id);
-      await showAlarmNotification(s.id, s.title, s.note);
+      await showAlarmNotification(s.id, s.title, s.note, true);
       const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-      for (const w of list) w.postMessage({ type: 'ALARM', id: s.id, title: s.title, note: s.note });
+      for (const w of list) w.postMessage({ type: 'ALARM', id: s.id, title: s.title, note: s.note, late: true });
     } else {
       await deleteSchedule(s.id);
     }

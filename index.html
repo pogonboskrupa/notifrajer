@@ -155,7 +155,7 @@ button,input,select{font-family:inherit;font-size:inherit}
 // Bump on every deploy — shown in the header so it's obvious (without opening
 // devtools) whether a device is actually running the latest build, and must
 // match sw.js's CACHE string so a stale service worker is easy to spot too.
-var APP_VERSION = 'v12';
+var APP_VERSION = 'v13';
 
 // ── Globals ───────────────────────────────────────────────────────────────
 var APP = {
@@ -394,7 +394,7 @@ function stopAlarm() { if (alarmTimer) { clearInterval(alarmTimer); alarmTimer =
 function triggerAlarm(data) {
   var rems = getRems(), r = rems.filter(function(x){ return x.id == data.id; })[0];
   var evs = getEvents(), ev = evs.filter(function(x){ return x.id == data.id; })[0];
-  var alarmData = { id: data.id, title: data.title || (r&&r.title) || (ev&&ev.title) || 'Podsjetnik', note: data.note || (r&&r.note) || (ev&&ev.note) || '' };
+  var alarmData = { id: data.id, title: data.title || (r&&r.title) || (ev&&ev.title) || 'Podsjetnik', note: data.note || (r&&r.note) || (ev&&ev.note) || '', late: !!data.late };
   if (r && r.repeat === 'once') saveRems(rems.map(function(x){ return x.id==data.id ? Object.assign({},x,{fired:true}) : x; }));
   if (ev) saveEvents(evs.map(function(x){ return x.id==data.id ? Object.assign({},x,{fired:true}) : x; }));
   if (document.hidden) {
@@ -646,6 +646,11 @@ function renderAlarm() {
   page.appendChild(ring);
 
   var tsEl = mk('div',{style:'font-size:13px;color:#e24b4a;letter-spacing:2px;margin-bottom:10px'}); tsEl.textContent=ts; page.appendChild(tsEl);
+  if (a.late) {
+    var lateEl = mk('div',{style:'font-size:11px;font-weight:700;color:#e24b4a;background:rgba(226,75,74,.1);border:1px solid rgba(226,75,74,.35);border-radius:20px;padding:5px 12px;margin-bottom:14px'});
+    lateEl.textContent = '⏰ Zakasnio alarm — sistem je ugasio app u pozadini pa nije zazvonio na vrijeme';
+    page.appendChild(lateEl);
+  }
   var titleEl = mk('div',{style:'font-size:26px;font-weight:800;text-align:center;margin-bottom:8px'}); titleEl.textContent=a.title; page.appendChild(titleEl);
   if(a.note){ var noteEl=mk('div',{style:'font-size:14px;color:#6e6e77;text-align:center;margin-bottom:28px;line-height:1.5'}); noteEl.textContent=a.note; page.appendChild(noteEl); }
 
@@ -1099,6 +1104,21 @@ function renderMain() {
     var infp=mk('p',{style:'font-size:12px;color:#86868f;line-height:1.7'});
     infp.textContent='Za pozadinske notifikacije: instaliraj app (Add to Home Screen) i dozvoli notifikacije. Podaci su lokalni na uređaju.';
     inf.appendChild(infp); page.appendChild(inf);
+
+    var rc = mk('div',{class:'card'});
+    var rct=mk('div',{class:'card-title'}); rct.textContent='Pouzdanost alarma'; rc.appendChild(rct);
+    var rp1=mk('p',{style:'font-size:12px;color:#86868f;line-height:1.7;margin-bottom:10px'});
+    rp1.textContent='Android može ugasiti app u pozadini, pa alarm ne zazvoni tačno na vrijeme — u tom slučaju zazvoni kao "zakasnio" čim sljedeći put otvoriš app. Za najpouzdaniji rad:';
+    rc.appendChild(rp1);
+    ['Isključi optimizaciju baterije za ovu app (Settings → Apps → Battery → Bez ograničenja)',
+     'Uključi Autostart za ovu app (Settings → Apps → Autostart)',
+     'Zaključaj app u pregledu nedavnih (Recents) — dugi pritisak na app karticu → Lock'
+    ].forEach(function(step) {
+      var line = mk('div',{style:'font-size:12px;color:#86868f;line-height:1.7;margin-bottom:3px'});
+      line.textContent = '• ' + step;
+      rc.appendChild(line);
+    });
+    page.appendChild(rc);
 
     var vc = mk('div',{class:'card'});
     var vct=mk('div',{class:'card-title'}); vct.textContent='O aplikaciji'; vc.appendChild(vct);
