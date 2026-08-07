@@ -155,7 +155,7 @@ button,input,select{font-family:inherit;font-size:inherit}
 // Bump on every deploy — shown in the header so it's obvious (without opening
 // devtools) whether a device is actually running the latest build, and must
 // match sw.js's CACHE string so a stale service worker is easy to spot too.
-var APP_VERSION = 'v11';
+var APP_VERSION = 'v12';
 
 // ── Globals ───────────────────────────────────────────────────────────────
 var APP = {
@@ -163,6 +163,7 @@ var APP = {
   view: 'main',   // setup | main | alarm
   tab: 'add',     // add | list | settings
   alarm: null,
+  pendingAlarm: null, // alarm fired while app was backgrounded — shown once visible
   setupStep: 'set',
   sp: '', sc: '', serr: '',
   pinInput: '', perr: '',
@@ -393,12 +394,29 @@ function stopAlarm() { if (alarmTimer) { clearInterval(alarmTimer); alarmTimer =
 function triggerAlarm(data) {
   var rems = getRems(), r = rems.filter(function(x){ return x.id == data.id; })[0];
   var evs = getEvents(), ev = evs.filter(function(x){ return x.id == data.id; })[0];
-  APP.alarm = { id: data.id, title: data.title || (r&&r.title) || (ev&&ev.title) || 'Podsjetnik', note: data.note || (r&&r.note) || (ev&&ev.note) || '' };
+  var alarmData = { id: data.id, title: data.title || (r&&r.title) || (ev&&ev.title) || 'Podsjetnik', note: data.note || (r&&r.note) || (ev&&ev.note) || '' };
   if (r && r.repeat === 'once') saveRems(rems.map(function(x){ return x.id==data.id ? Object.assign({},x,{fired:true}) : x; }));
   if (ev) saveEvents(evs.map(function(x){ return x.id==data.id ? Object.assign({},x,{fired:true}) : x; }));
+  if (document.hidden) {
+    // App is in the background — don't hijack the screen out of nowhere.
+    // The OS notification (🔔) is already showing; the full-screen PIN
+    // prompt appears once the user actually brings the app forward
+    // (tapping the notification, or switching back to it manually).
+    APP.pendingAlarm = alarmData;
+    return;
+  }
+  APP.alarm = alarmData;
   startAlarm();
   render();
 }
+document.addEventListener('visibilitychange', function(){
+  if (!document.hidden && APP.pendingAlarm && !APP.alarm) {
+    APP.alarm = APP.pendingAlarm;
+    APP.pendingAlarm = null;
+    startAlarm();
+    render();
+  }
+});
 
 // ── Page check (fallback) ─────────────────────────────────────────────────
 setInterval(function() {

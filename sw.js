@@ -1,4 +1,4 @@
-const CACHE = 'pin-reminder-v11';
+const CACHE = 'pin-reminder-v12';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.svg', './icon-512.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const SCHEDULE_CACHE = 'pin-reminder-schedules';
 
@@ -101,6 +101,8 @@ async function showAlarmNotification(id, title, note) {
 
 // ── Timers ─────────────────────────────────────────────────────────────────
 const timers = {};
+// Tags allowed to close without being re-shown (see notificationclose below)
+const okToClose = new Set();
 
 // setTimeout delays are a signed 32-bit int (~24.8 days); anything larger
 // overflows and fires immediately, so long waits are chained in chunks.
@@ -214,6 +216,7 @@ self.addEventListener('message', async e => {
   if (type === 'DISMISS') {
     // Called after correct PIN entered — close the notification
     const { id } = e.data;
+    okToClose.add('reminder-' + id);
     const notifs = await self.registration.getNotifications({ tag: 'reminder-' + id });
     for (const n of notifs) n.close();
   }
@@ -222,6 +225,7 @@ self.addEventListener('message', async e => {
     const { id } = e.data;
     if (timers[id]) { clearTimeout(timers[id]); delete timers[id]; }
     await deleteSchedule(id);
+    okToClose.add('reminder-' + id);
     const notifs = await self.registration.getNotifications({ tag: 'reminder-' + id });
     for (const n of notifs) n.close();
   }
@@ -231,8 +235,23 @@ self.addEventListener('message', async e => {
     Object.keys(timers).forEach(id => delete timers[id]);
     await clearAllSchedules();
     const notifs = await self.registration.getNotifications();
-    for (const n of notifs) n.close();
+    for (const n of notifs) { okToClose.add(n.tag); n.close(); }
   }
+});
+
+// ── Re-show the alarm notification if it's swiped away without the PIN ─────
+// requireInteraction only stops the OS auto-timeout — Android still lets the
+// user swipe it away. There is no true "can't dismiss" flag in the Web
+// Notifications API, so this is the closest equivalent: if an alarm
+// notification closes for any reason other than our own DISMISS/CANCEL
+// (tag recorded in okToClose first), put it right back.
+self.addEventListener('notificationclose', e => {
+  const n = e.notification;
+  const { state } = n.data || {};
+  if (state !== 'alarm') return;
+  if (okToClose.has(n.tag)) { okToClose.delete(n.tag); return; }
+  const { reminderId, title, note } = n.data;
+  e.waitUntil(showAlarmNotification(reminderId, title, note));
 });
 
 // ── Notification click → open app ─────────────────────────────────────────
