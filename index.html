@@ -46,8 +46,8 @@ button,input,select{font-family:inherit;font-size:inherit}
 .btn-ghost:active{background:#1a1a1a}
 
 /* Tabs */
-.tabs{display:flex;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;margin-bottom:20px}
-.tab{flex:1;padding:11px 4px;text-align:center;font-size:13px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#555;position:relative;transition:all .15s}
+.tabs{display:flex;flex-wrap:wrap;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;margin-bottom:20px}
+.tab{flex:1 1 20%;padding:11px 2px;text-align:center;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#555;position:relative;transition:all .15s;white-space:nowrap}
 .tab.active{background:#e24b4a;color:#fff}
 .tab-badge{position:absolute;top:5px;right:6px;background:#fff;color:#e24b4a;font-size:10px;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700}
 
@@ -110,6 +110,40 @@ button,input,select{font-family:inherit;font-size:inherit}
 .install-bar-text span{font-size:11px;color:#555}
 .install-bar-btn{background:#e24b4a;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0}
 .install-bar-close{background:none;border:none;color:#444;font-size:20px;cursor:pointer;padding:4px;flex-shrink:0;line-height:1}
+
+/* Notes / Categories */
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+.cat-card{background:#141414;border:1px solid #1e1e1e;border-radius:12px;padding:14px;cursor:pointer;position:relative}
+.cat-card-name{font-size:14px;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:16px}
+.cat-card-count{font-size:12px;color:#555}
+.cat-card-del{position:absolute;top:8px;right:8px;background:none;border:none;color:#333;font-size:16px;cursor:pointer;padding:2px 6px;line-height:1}
+.cat-card-del:active{color:#e24b4a}
+.cat-back{display:flex;align-items:center;gap:6px;margin-bottom:16px;cursor:pointer;color:#666;font-size:13px;font-weight:700;background:none;border:none;padding:4px 0}
+.cat-item{display:flex;align-items:center;gap:11px;padding:12px 13px;background:#141414;border:1px solid #1e1e1e;border-radius:12px;margin-bottom:9px}
+.cat-item-check{width:21px;height:21px;border-radius:6px;border:1.5px solid #2a2a2a;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;background:none}
+.cat-item-check.done{background:#e24b4a;border-color:#e24b4a}
+.cat-item-text{flex:1;font-size:14px;word-break:break-word}
+.cat-item-text.done{color:#444;text-decoration:line-through}
+.add-inline{display:flex;gap:8px;margin-bottom:16px}
+.add-inline input{flex:1;padding:11px 13px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:#f0ede8;font-size:15px;outline:none}
+.add-inline input:focus{border-color:#e24b4a}
+.add-inline button{flex-shrink:0;padding:0 18px;background:#e24b4a;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:20px;line-height:1}
+.add-inline button:disabled{opacity:.35}
+
+/* Calendar */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cal-nav button{background:#141414;border:1px solid #2a2a2a;color:#f0ede8;width:34px;height:34px;border-radius:8px;font-size:16px;cursor:pointer;flex-shrink:0}
+.cal-nav-label{font-size:15px;font-weight:700;text-transform:capitalize}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:18px}
+.cal-dow{text-align:center;font-size:10px;color:#555;font-weight:700;padding-bottom:6px}
+.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;font-size:13px;cursor:pointer;position:relative;color:#ccc;background:#141414;border:1px solid transparent}
+.cal-day.other{color:#333}
+.cal-day.today{border-color:#e24b4a}
+.cal-day.selected{background:#e24b4a;color:#fff;font-weight:700}
+.cal-day-dot{width:4px;height:4px;border-radius:50%;background:#e24b4a;position:absolute;bottom:5px}
+.cal-day.selected .cal-day-dot{background:#fff}
+.cal-events-title{font-size:11px;font-weight:700;letter-spacing:1.4px;color:#666;text-transform:uppercase;margin-bottom:12px}
+.ev-time{font-size:12px;color:#e24b4a;font-weight:700;flex-shrink:0;min-width:42px}
 </style>
 </head>
 <body>
@@ -128,7 +162,16 @@ var APP = {
   notifPerm: ('Notification' in window) ? Notification.permission : 'unsupported',
   swReg: null,
   installPrompt: null,  // deferred beforeinstallprompt event
-  installDismissed: false
+  installDismissed: false,
+  // Notes / categories
+  notesCat: null,       // id of open category, or null for category grid
+  newCatName: '',
+  newItemText: '',
+  // Calendar
+  calYear: new Date().getFullYear(),
+  calMonthIdx: new Date().getMonth(),
+  calSelDate: '',
+  calAddTitle: '', calAddTime: '', calAddNote: ''
 };
 
 // ── Storage ───────────────────────────────────────────────────────────────
@@ -140,6 +183,10 @@ function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch
 function lsClear() { try { localStorage.clear(); } catch(e) {} }
 function getRems() { return lsGet('reminders', []); }
 function saveRems(r) { lsSet('reminders', r); }
+function getCats() { return lsGet('note_categories', []); }
+function saveCats(c) { lsSet('note_categories', c); }
+function getEvents() { return lsGet('cal_events', []); }
+function saveEvents(e) { lsSet('cal_events', e); }
 
 // ── Install prompt ────────────────────────────────────────────────────────
 window.addEventListener('beforeinstallprompt', function(e) {
@@ -153,13 +200,16 @@ window.addEventListener('appinstalled', function() {
 });
 
 // ── Service Worker ────────────────────────────────────────────────────────
+// Message listener at top level — never misses messages regardless of timing
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'ALARM') triggerAlarm(e.data);
+  });
+}
 function initSW() {
   if (!navigator.serviceWorker) return;
   navigator.serviceWorker.register('sw.js').then(function(reg) {
     APP.swReg = reg;
-    navigator.serviceWorker.addEventListener('message', function(e) {
-      if (e.data && e.data.type === 'ALARM') triggerAlarm(e.data);
-    });
   }).catch(function(e) { console.warn('SW:', e); });
 }
 function swPost(data) {
@@ -227,6 +277,16 @@ setInterval(function() {
 function pad(n) { return String(n).padStart(2,'0'); }
 function fmtTime(t) { var p=t.split(':'); return pad(p[0])+':'+p[1]; }
 function rl(r) { return r==='once'?'jednom':r==='daily'?'svaki dan':'radni dani'; }
+
+// ── Date helpers (calendar) ─────────────────────────────────────────────────
+var MONTHS = ['Januar','Februar','Mart','April','Maj','Juni','Juli','August','Septembar','Oktobar','Novembar','Decembar'];
+var DOWS = ['Pon','Uto','Sri','Čet','Pet','Sub','Ned'];
+function dkey(y,m,d) { return y+'-'+pad(m+1)+'-'+pad(d); }
+function todayKey() { var n=new Date(); return dkey(n.getFullYear(), n.getMonth(), n.getDate()); }
+function fmtDateLabel(k) {
+  var p = k.split('-').map(Number);
+  return p[2] + '. ' + MONTHS[p[1]-1].toLowerCase() + ' ' + p[0] + '.';
+}
 
 function mk(tag, attrs, children) {
   var el = document.createElement(tag);
@@ -452,7 +512,7 @@ function renderMain() {
 
   // Tabs
   var tabsEl = mk('div',{class:'tabs'});
-  [['add','+ Dodaj'],['list','Lista'],['settings','⚙']].forEach(function(pair){
+  [['add','Dodaj'],['list','Lista'],['notes','Bilješke'],['calendar','Kalendar'],['settings','⚙']].forEach(function(pair){
     var t = mk('button',{class:'tab'+(APP.tab===pair[0]?' active':'')});
     t.textContent = pair[1];
     if (pair[0]==='list' && active.length>0) {
@@ -473,7 +533,7 @@ function renderMain() {
     var l1=mk('label'); l1.textContent='Naziv *'; f1.appendChild(l1);
     var inp1=mk('input',{type:'text',placeholder:'npr. Popij lijek, Sastanak...'});
     inp1.value = APP.addTitle;
-    inp1.addEventListener('input', function(){ APP.addTitle=this.value; });
+    inp1.addEventListener('input', function(){ APP.addTitle=this.value; addBtn.disabled=(!APP.addTitle.trim()||!APP.addTime); });
     f1.appendChild(inp1); card.appendChild(f1);
 
     // Note field
@@ -488,7 +548,7 @@ function renderMain() {
     var row = mk('div',{class:'row2'});
     var f3=mk('div',{class:'field'}); var l3=mk('label'); l3.textContent='Vrijeme *'; f3.appendChild(l3);
     var inp3=mk('input',{type:'time'}); inp3.value=APP.addTime;
-    inp3.addEventListener('input', function(){ APP.addTime=this.value; });
+    inp3.addEventListener('input', function(){ APP.addTime=this.value; addBtn.disabled=(!APP.addTitle.trim()||!APP.addTime); });
     f3.appendChild(inp3); row.appendChild(f3);
 
     var f4=mk('div',{class:'field'}); var l4=mk('label'); l4.textContent='Ponavljanje'; f4.appendChild(l4);
@@ -531,6 +591,234 @@ function renderMain() {
         rdel.addEventListener('click', (function(rid){ return function(){ cancelRem(rid); saveRems(getRems().filter(function(x){return x.id!==rid;})); render(); }; })(r.id));
         ri.appendChild(rdel);
         page.appendChild(ri);
+      });
+    }
+  }
+
+  // ── NOTES TAB (categories) ──
+  if (APP.tab === 'notes') {
+    var cats = getCats();
+    var openCat = APP.notesCat ? cats.filter(function(c){ return c.id===APP.notesCat; })[0] : null;
+
+    if (!openCat) {
+      // Category grid
+      var addRow = mk('div',{class:'add-inline'});
+      var catInp = mk('input',{type:'text',placeholder:'npr. More, Kamp, Posao...'});
+      catInp.value = APP.newCatName;
+      catInp.addEventListener('input', function(){ APP.newCatName=this.value; addCatBtn.disabled=!APP.newCatName.trim(); });
+      catInp.addEventListener('keydown', function(e){ if (e.key==='Enter') addCatBtn.click(); });
+      addRow.appendChild(catInp);
+      var addCatBtn = mk('button',{disabled:!APP.newCatName.trim()});
+      addCatBtn.textContent='+';
+      addCatBtn.addEventListener('click', function(){
+        var name = APP.newCatName.trim();
+        if (!name) return;
+        saveCats(getCats().concat([{id:Date.now(),name:name,items:[]}]));
+        APP.newCatName='';
+        render();
+      });
+      addRow.appendChild(addCatBtn);
+      page.appendChild(addRow);
+
+      if (cats.length === 0) {
+        var emp2 = mk('div',{class:'empty'});
+        var eico2=mk('div',{class:'empty-icon'}); eico2.textContent='☰'; emp2.appendChild(eico2);
+        var ep2=mk('p',{style:'font-size:14px;line-height:1.7;color:#444'}); ep2.textContent='Nema kategorija. Dodaj prvu iznad (npr. More).'; emp2.appendChild(ep2);
+        page.appendChild(emp2);
+      } else {
+        var grid = mk('div',{class:'cat-grid'});
+        cats.forEach(function(c) {
+          var card = mk('div',{class:'cat-card'});
+          var cn = mk('div',{class:'cat-card-name'}); cn.textContent=c.name; card.appendChild(cn);
+          var cc = mk('div',{class:'cat-card-count'});
+          var doneN = c.items.filter(function(i){return i.done;}).length;
+          cc.textContent = c.items.length===0 ? 'Prazno' : (doneN+' / '+c.items.length);
+          card.appendChild(cc);
+          var del = mk('button',{class:'cat-card-del'}); del.textContent='×';
+          del.addEventListener('click', (function(cid){ return function(e){
+            e.stopPropagation();
+            if (!confirm('Obrisati kategoriju?')) return;
+            saveCats(getCats().filter(function(x){return x.id!==cid;}));
+            render();
+          }; })(c.id));
+          card.appendChild(del);
+          card.addEventListener('click', (function(cid){ return function(){ APP.notesCat=cid; render(); }; })(c.id));
+          grid.appendChild(card);
+        });
+        page.appendChild(grid);
+      }
+    } else {
+      // Inside a category — list of items
+      var back = mk('button',{class:'cat-back'}); back.textContent='← Sve kategorije';
+      back.addEventListener('click', function(){ APP.notesCat=null; render(); });
+      page.appendChild(back);
+
+      var catTitle = mk('div',{class:'card-title'}); catTitle.textContent=openCat.name; page.appendChild(catTitle);
+
+      var itemAddRow = mk('div',{class:'add-inline'});
+      var itemInp = mk('input',{type:'text',placeholder:'Dodaj stvar...'});
+      itemInp.value = APP.newItemText;
+      itemInp.addEventListener('input', function(){ APP.newItemText=this.value; addItemBtn.disabled=!APP.newItemText.trim(); });
+      itemInp.addEventListener('keydown', function(e){ if (e.key==='Enter') addItemBtn.click(); });
+      itemAddRow.appendChild(itemInp);
+      var addItemBtn = mk('button',{disabled:!APP.newItemText.trim()});
+      addItemBtn.textContent='+';
+      addItemBtn.addEventListener('click', function(){
+        var text = APP.newItemText.trim();
+        if (!text) return;
+        var allCats = getCats();
+        var target = allCats.filter(function(c){return c.id===openCat.id;})[0];
+        if (target) target.items = target.items.concat([{id:Date.now(),text:text,done:false}]);
+        saveCats(allCats);
+        APP.newItemText='';
+        render();
+      });
+      itemAddRow.appendChild(addItemBtn);
+      page.appendChild(itemAddRow);
+
+      if (openCat.items.length === 0) {
+        var emp3 = mk('div',{class:'empty'});
+        var eico3=mk('div',{class:'empty-icon'}); eico3.textContent='○'; emp3.appendChild(eico3);
+        var ep3=mk('p',{style:'font-size:14px;line-height:1.7;color:#444'}); ep3.textContent='Nema stvari u ovoj kategoriji.'; emp3.appendChild(ep3);
+        page.appendChild(emp3);
+      } else {
+        openCat.items.forEach(function(it) {
+          var row = mk('div',{class:'cat-item'});
+          var chk = mk('button',{class:'cat-item-check'+(it.done?' done':'')});
+          if (it.done) chk.appendChild(svgEl('<polyline points="20 6 9 17 4 12"/>',13,'#fff'));
+          chk.addEventListener('click', (function(iid){ return function(){
+            var allCats = getCats();
+            var target = allCats.filter(function(c){return c.id===openCat.id;})[0];
+            if (target) target.items = target.items.map(function(i){ return i.id===iid ? Object.assign({},i,{done:!i.done}) : i; });
+            saveCats(allCats);
+            render();
+          }; })(it.id));
+          row.appendChild(chk);
+          var itxt = mk('div',{class:'cat-item-text'+(it.done?' done':'')}); itxt.textContent=it.text; row.appendChild(itxt);
+          var idel = mk('button',{class:'ri-del'}); idel.textContent='×';
+          idel.addEventListener('click', (function(iid){ return function(){
+            var allCats = getCats();
+            var target = allCats.filter(function(c){return c.id===openCat.id;})[0];
+            if (target) target.items = target.items.filter(function(i){return i.id!==iid;});
+            saveCats(allCats);
+            render();
+          }; })(it.id));
+          row.appendChild(idel);
+          page.appendChild(row);
+        });
+      }
+    }
+  }
+
+  // ── CALENDAR TAB ──
+  if (APP.tab === 'calendar') {
+    var events = getEvents();
+    var y = APP.calYear, m = APP.calMonthIdx;
+
+    // Nav
+    var nav = mk('div',{class:'cal-nav'});
+    var prevBtn = mk('button'); prevBtn.textContent='‹';
+    prevBtn.addEventListener('click', function(){ m--; if(m<0){m=11;y--;} APP.calMonthIdx=m; APP.calYear=y; render(); });
+    nav.appendChild(prevBtn);
+    var navLabel = mk('div',{class:'cal-nav-label'}); navLabel.textContent = MONTHS[m]+' '+y; nav.appendChild(navLabel);
+    var nextBtn = mk('button'); nextBtn.textContent='›';
+    nextBtn.addEventListener('click', function(){ m++; if(m>11){m=0;y++;} APP.calMonthIdx=m; APP.calYear=y; render(); });
+    nav.appendChild(nextBtn);
+    page.appendChild(nav);
+
+    // Grid
+    var grid2 = mk('div',{class:'cal-grid'});
+    DOWS.forEach(function(d){ var dEl=mk('div',{class:'cal-dow'}); dEl.textContent=d; grid2.appendChild(dEl); });
+
+    var firstOfMonth = new Date(y, m, 1);
+    var startOffset = (firstOfMonth.getDay()+6)%7; // Monday=0
+    var daysInMonth = new Date(y, m+1, 0).getDate();
+    var daysInPrevMonth = new Date(y, m, 0).getDate();
+    var tKey = todayKey();
+
+    var evByDate = {};
+    events.forEach(function(ev){ (evByDate[ev.date] = evByDate[ev.date] || []).push(ev); });
+
+    var cells = [];
+    for (var i=0;i<startOffset;i++) {
+      var pd = daysInPrevMonth - startOffset + i + 1;
+      cells.push({d:pd, other:true, key:null});
+    }
+    for (var d=1; d<=daysInMonth; d++) cells.push({d:d, other:false, key:dkey(y,m,d)});
+    while (cells.length % 7 !== 0) {
+      var nd = cells.length - (startOffset+daysInMonth) + 1;
+      cells.push({d:nd, other:true, key:null});
+    }
+
+    cells.forEach(function(c) {
+      var cls = 'cal-day'+(c.other?' other':'')+(c.key===tKey?' today':'')+(c.key===APP.calSelDate?' selected':'');
+      var cEl = mk('div',{class:cls});
+      var num = mk('div'); num.textContent=String(c.d); cEl.appendChild(num);
+      if (c.key && evByDate[c.key] && evByDate[c.key].length>0) cEl.appendChild(mk('div',{class:'cal-day-dot'}));
+      if (!c.other) {
+        cEl.addEventListener('click', (function(k){ return function(){ APP.calSelDate=k; render(); }; })(c.key));
+      }
+      grid2.appendChild(cEl);
+    });
+    page.appendChild(grid2);
+
+    // Add event form
+    var evCard = mk('div',{class:'card'});
+    var evCt = mk('div',{class:'card-title'}); evCt.textContent = APP.calSelDate ? fmtDateLabel(APP.calSelDate) : 'Odaberi datum'; evCard.appendChild(evCt);
+
+    var evF1 = mk('div',{class:'field'});
+    var evL1 = mk('label'); evL1.textContent='Naziv *'; evF1.appendChild(evL1);
+    var evInp1 = mk('input',{type:'text',placeholder:'Što trebaš napraviti...'});
+    evInp1.value = APP.calAddTitle;
+    evInp1.addEventListener('input', function(){ APP.calAddTitle=this.value; evAddBtn.disabled=!APP.calAddTitle.trim(); });
+    evF1.appendChild(evInp1); evCard.appendChild(evF1);
+
+    var evRow = mk('div',{class:'row2'});
+    var evF2 = mk('div',{class:'field'}); var evL2=mk('label'); evL2.textContent='Vrijeme'; evF2.appendChild(evL2);
+    var evInp2 = mk('input',{type:'time'}); evInp2.value=APP.calAddTime;
+    evInp2.addEventListener('input', function(){ APP.calAddTime=this.value; });
+    evF2.appendChild(evInp2); evRow.appendChild(evF2);
+
+    var evF3 = mk('div',{class:'field'}); var evL3=mk('label'); evL3.textContent='Napomena'; evF3.appendChild(evL3);
+    var evInp3 = mk('input',{type:'text',placeholder:'Detalji...'});
+    evInp3.value = APP.calAddNote;
+    evInp3.addEventListener('input', function(){ APP.calAddNote=this.value; });
+    evF3.appendChild(evInp3); evRow.appendChild(evF3);
+    evCard.appendChild(evRow);
+
+    var evAddBtn = mk('button',{class:'btn-red',disabled:!APP.calAddTitle.trim()});
+    evAddBtn.textContent='Dodaj u kalendar';
+    evAddBtn.addEventListener('click', function(){
+      if (!APP.calAddTitle.trim() || !APP.calSelDate) return;
+      var ev={id:Date.now(),date:APP.calSelDate,time:APP.calAddTime,title:APP.calAddTitle.trim(),note:APP.calAddNote.trim()};
+      saveEvents(getEvents().concat([ev]));
+      APP.calAddTitle=''; APP.calAddTime=''; APP.calAddNote='';
+      render();
+    });
+    evCard.appendChild(evAddBtn);
+    page.appendChild(evCard);
+
+    // Events for selected day
+    var dayEvents = (evByDate[APP.calSelDate] || []).slice().sort(function(a,b){ return (a.time||'99:99').localeCompare(b.time||'99:99'); });
+    var evTitle = mk('div',{class:'cal-events-title'}); evTitle.textContent='Zadaci za ovaj dan'; page.appendChild(evTitle);
+    if (dayEvents.length === 0) {
+      var emp4 = mk('div',{class:'empty'});
+      var eico4=mk('div',{class:'empty-icon'}); eico4.textContent='○'; emp4.appendChild(eico4);
+      var ep4=mk('p',{style:'font-size:14px;line-height:1.7;color:#444'}); ep4.textContent='Nema zadataka za ovaj dan.'; emp4.appendChild(ep4);
+      page.appendChild(emp4);
+    } else {
+      dayEvents.forEach(function(ev) {
+        var ri2 = mk('div',{class:'ri'});
+        if (ev.time) { var evt = mk('div',{class:'ev-time'}); evt.textContent=fmtTime(ev.time); ri2.appendChild(evt); }
+        else ri2.appendChild(mk('div',{class:'ri-dot'}));
+        var rb2 = mk('div',{class:'ri-body'});
+        var rn2=mk('div',{class:'ri-name'}); rn2.textContent=ev.title; rb2.appendChild(rn2);
+        if (ev.note) { var rno2=mk('div',{class:'ri-note'}); rno2.textContent=ev.note; rb2.appendChild(rno2); }
+        ri2.appendChild(rb2);
+        var rdel2=mk('button',{class:'ri-del'}); rdel2.textContent='×';
+        rdel2.addEventListener('click', (function(eid){ return function(){ saveEvents(getEvents().filter(function(x){return x.id!==eid;})); render(); }; })(ev.id));
+        ri2.appendChild(rdel2);
+        page.appendChild(ri2);
       });
     }
   }
@@ -630,6 +918,7 @@ function render() {
 // ── Init ──────────────────────────────────────────────────────────────────
 APP.pin = lsGet('app_pin','');
 APP.installDismissed = !!lsGet('install_dismissed', false);
+APP.calSelDate = todayKey();
 initSW();
 getRems().filter(function(r){ return !r.fired; }).forEach(scheduleRem);
 
@@ -642,8 +931,8 @@ getRems().filter(function(r){ return !r.fired; }).forEach(scheduleRem);
     try {
       var d = JSON.parse(decodeURIComponent(alarmParam));
       if (d && d.type === 'ALARM') {
-        // Delay so SW message listener is set up first
-        setTimeout(function() { triggerAlarm(d); }, 100);
+        // Delay to let the page fully render before showing alarm screen
+        setTimeout(function() { triggerAlarm(d); }, 300);
       }
     } catch(e) {}
     history.replaceState(null, '', location.pathname);

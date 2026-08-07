@@ -52,6 +52,13 @@ ngrok http 3000
 5. **Dodaj podsjetnike** s vremenom i ponavljanjem
 6. Kad alarm zazvoni — ne možeš ga ugasiti bez PIN-a!
 
+## Tabovi
+
+- **Dodaj / Lista** — podsjetnici s alarmom zaštićenim PIN-om
+- **Bilješke** — kategorije (npr. „More", „Kamp") i unutar svake lista stvari koje ti trebaju, s kvačicom za odrađeno
+- **Kalendar** — mjesečni pregled; klikni na dan i dodaj šta i kad trebaš uraditi (tačkica označava dane sa zadacima)
+- **⚙** — PIN, notifikacije, brisanje podataka
+
 ## Tehničke napomene
 
 - **Service Worker** (`sw.js`) prima poruke iz aplikacije i planira notifikacije
