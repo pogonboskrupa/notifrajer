@@ -225,6 +225,13 @@ function scheduleRem(r) {
   swPost({ type: 'SCHEDULE', id: r.id, title: r.title, note: r.note, time: r.time, fireAt: fire.getTime() });
 }
 function cancelRem(id) { swPost({ type: 'CANCEL', id: id }); }
+function scheduleEvent(ev) {
+  if (!ev.time) return; // no time set → note only, no alarm
+  var p = ev.time.split(':'), d = ev.date.split('-').map(Number);
+  var fire = new Date(d[0], d[1]-1, d[2], +p[0], +p[1], 0, 0);
+  if (fire <= new Date()) return; // don't schedule past events
+  swPost({ type: 'SCHEDULE', id: ev.id, title: ev.title, note: ev.note, time: ev.time, fireAt: fire.getTime() });
+}
 
 // ── Audio ─────────────────────────────────────────────────────────────────
 var audioCtx = null, alarmTimer = null;
@@ -251,8 +258,10 @@ function stopAlarm() { clearInterval(alarmTimer); alarmTimer = null; }
 // ── Alarm trigger ─────────────────────────────────────────────────────────
 function triggerAlarm(data) {
   var rems = getRems(), r = rems.filter(function(x){ return x.id == data.id; })[0];
-  APP.alarm = { id: data.id, title: data.title || (r&&r.title) || 'Podsjetnik', note: data.note || (r&&r.note) || '' };
+  var evs = getEvents(), ev = evs.filter(function(x){ return x.id == data.id; })[0];
+  APP.alarm = { id: data.id, title: data.title || (r&&r.title) || (ev&&ev.title) || 'Podsjetnik', note: data.note || (r&&r.note) || (ev&&ev.note) || '' };
   if (r && r.repeat === 'once') saveRems(rems.map(function(x){ return x.id==data.id ? Object.assign({},x,{fired:true}) : x; }));
+  if (ev) saveEvents(evs.map(function(x){ return x.id==data.id ? Object.assign({},x,{fired:true}) : x; }));
   startAlarm();
   render();
 }
@@ -270,6 +279,14 @@ setInterval(function() {
     if (lsGet(fk,'') === td) return;
     lsSet(fk, td);
     triggerAlarm({ id: r.id, title: r.title, note: r.note||'' });
+  });
+  var today = dkey(now.getFullYear(), now.getMonth(), now.getDate());
+  getEvents().forEach(function(ev) {
+    if (ev.fired || !ev.time || ev.time !== key || ev.date !== today) return;
+    var fk = 'lf_'+ev.id, td = now.toDateString()+key;
+    if (lsGet(fk,'') === td) return;
+    lsSet(fk, td);
+    triggerAlarm({ id: ev.id, title: ev.title, note: ev.note||'' });
   });
 }, 15000);
 
@@ -786,12 +803,17 @@ function renderMain() {
     evF3.appendChild(evInp3); evRow.appendChild(evF3);
     evCard.appendChild(evRow);
 
+    var evHint = mk('div',{style:'font-size:11px;color:#555;margin:-6px 0 12px;line-height:1.5'});
+    evHint.textContent = 'Postavi vrijeme da zadatak zazvoni kao alarm (traži PIN za gašenje).';
+    evCard.appendChild(evHint);
+
     var evAddBtn = mk('button',{class:'btn-red',disabled:!APP.calAddTitle.trim()});
     evAddBtn.textContent='Dodaj u kalendar';
     evAddBtn.addEventListener('click', function(){
       if (!APP.calAddTitle.trim() || !APP.calSelDate) return;
-      var ev={id:Date.now(),date:APP.calSelDate,time:APP.calAddTime,title:APP.calAddTitle.trim(),note:APP.calAddNote.trim()};
+      var ev={id:'ev'+Date.now(),date:APP.calSelDate,time:APP.calAddTime,title:APP.calAddTitle.trim(),note:APP.calAddNote.trim(),fired:false};
       saveEvents(getEvents().concat([ev]));
+      scheduleEvent(ev);
       APP.calAddTitle=''; APP.calAddTime=''; APP.calAddNote='';
       render();
     });
@@ -813,10 +835,14 @@ function renderMain() {
         else ri2.appendChild(mk('div',{class:'ri-dot'}));
         var rb2 = mk('div',{class:'ri-body'});
         var rn2=mk('div',{class:'ri-name'}); rn2.textContent=ev.title; rb2.appendChild(rn2);
+        var metaBits = [];
+        if (ev.time) metaBits.push('🔔 alarm');
+        if (ev.fired) metaBits.push('✓ odzvonio');
+        if (metaBits.length) { var rm2=mk('div',{class:'ri-meta'}); rm2.textContent=metaBits.join(' · '); rb2.appendChild(rm2); }
         if (ev.note) { var rno2=mk('div',{class:'ri-note'}); rno2.textContent=ev.note; rb2.appendChild(rno2); }
         ri2.appendChild(rb2);
         var rdel2=mk('button',{class:'ri-del'}); rdel2.textContent='×';
-        rdel2.addEventListener('click', (function(eid){ return function(){ saveEvents(getEvents().filter(function(x){return x.id!==eid;})); render(); }; })(ev.id));
+        rdel2.addEventListener('click', (function(eid){ return function(){ cancelRem(eid); saveEvents(getEvents().filter(function(x){return x.id!==eid;})); render(); }; })(ev.id));
         ri2.appendChild(rdel2);
         page.appendChild(ri2);
       });
@@ -921,6 +947,7 @@ APP.installDismissed = !!lsGet('install_dismissed', false);
 APP.calSelDate = todayKey();
 initSW();
 getRems().filter(function(r){ return !r.fired; }).forEach(scheduleRem);
+getEvents().filter(function(e){ return !e.fired; }).forEach(scheduleEvent);
 
 // Handle URL parameters from notification click or shortcut
 (function() {

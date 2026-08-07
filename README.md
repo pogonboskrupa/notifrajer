@@ -56,7 +56,7 @@ ngrok http 3000
 
 - **Dodaj / Lista** — podsjetnici s alarmom zaštićenim PIN-om
 - **Bilješke** — kategorije (npr. „More", „Kamp") i unutar svake lista stvari koje ti trebaju, s kvačicom za odrađeno
-- **Kalendar** — mjesečni pregled; klikni na dan i dodaj šta i kad trebaš uraditi (tačkica označava dane sa zadacima)
+- **Kalendar** — mjesečni pregled; klikni na dan i dodaj šta i kad trebaš uraditi (tačkica označava dane sa zadacima). Ako postaviš vrijeme, zadatak zvoni kao alarm istog trenutka i traži PIN za gašenje — potpuno isto kao i obični podsjetnici
 - **⚙** — PIN, notifikacije, brisanje podataka
 
 ## Tehničke napomene
