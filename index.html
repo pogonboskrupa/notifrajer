@@ -26,6 +26,8 @@ button,input,select{font-family:inherit;font-size:inherit}
 .header-icon{width:36px;height:36px;background:#e24b4a;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .header-title{font-size:18px;font-weight:700;letter-spacing:-.3px}
 .header-sub{font-size:11px;color:#e24b4a;margin-top:2px;letter-spacing:.5px}
+.header-version{margin-left:auto;flex-shrink:0;font-size:11px;color:#444;font-weight:700;letter-spacing:.5px;background:#141414;border:1px solid #222;border-radius:6px;padding:4px 8px;align-self:flex-start}
+.header-version.stale{color:#e24b4a;border-color:#e24b4a}
 
 /* Card */
 .card{background:#141414;border:1px solid #222;border-radius:12px;padding:16px;margin-bottom:12px}
@@ -150,6 +152,11 @@ button,input,select{font-family:inherit;font-size:inherit}
 <body>
 <div id="app"></div>
 <script>
+// Bump on every deploy — shown in the header so it's obvious (without opening
+// devtools) whether a device is actually running the latest build, and must
+// match sw.js's CACHE string so a stale service worker is easy to spot too.
+var APP_VERSION = 'v8';
+
 // ── Globals ───────────────────────────────────────────────────────────────
 var APP = {
   pin: '',
@@ -164,6 +171,7 @@ var APP = {
   notifMsg: '',         // feedback after a permission request
   notifAsked: false,    // persisted: banner stops nagging once asked/dismissed
   swReg: null,
+  swUpdateAvailable: false,
   installPrompt: null,  // deferred beforeinstallprompt event
   installDismissed: false,
   // Notes / categories
@@ -302,10 +310,21 @@ if (navigator.serviceWorker) {
     if (e.data && e.data.type === 'ALARM') triggerAlarm(e.data);
   });
 }
+function applySWUpdate() { location.reload(); }
+
 function initSW() {
   if (!navigator.serviceWorker) return;
+  // Only a change from an *existing* controller counts as "new version took
+  // over" — the very first activation also fires controllerchange (null →
+  // worker) and that's not an update, just the app starting for the first time.
+  var hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    if (hadController) { APP.swUpdateAvailable = true; render(); }
+    hadController = true;
+  });
   navigator.serviceWorker.register('sw.js').then(function(reg) {
     APP.swReg = reg;
+    reg.update().catch(function(){}); // force an immediate check, don't wait for the browser's own timer
   }).catch(function(e) { console.warn('SW:', e); });
 }
 function swPost(data) {
@@ -446,6 +465,18 @@ function svgEl(path, size, col) {
   s.innerHTML = path; return s;
 }
 
+// Version badge — shown in every header so it's obvious at a glance which
+// build a device is actually running, without opening devtools.
+function versionBadge() {
+  var b = mk('div',{class:'header-version'+(APP.swUpdateAvailable?' stale':'')});
+  b.textContent = APP.swUpdateAvailable ? 'Nova verzija ↻' : APP_VERSION;
+  if (APP.swUpdateAvailable) {
+    b.title = 'Dostupna je nova verzija — dodirni da osvježiš';
+    b.addEventListener('click', applySWUpdate);
+  }
+  return b;
+}
+
 // Fix for select value (must set after appending to DOM or set selectedIndex)
 function sel(val, opts) {
   var s = document.createElement('select');
@@ -524,6 +555,7 @@ function renderSetup() {
   var ht1 = mk('div',{class:'header-title'}); ht1.textContent='PIN Podsjetnik'; htxt.appendChild(ht1);
   var ht2 = mk('div',{class:'header-sub'}); ht2.textContent=APP.view==='setup'&&APP.pin?'PROMJENA PIN-A':'POSTAVLJANJE PIN-A'; htxt.appendChild(ht2);
   hdr.appendChild(htxt);
+  hdr.appendChild(versionBadge());
   inner.appendChild(hdr);
 
   var h1 = mk('div',{style:'font-size:24px;font-weight:800;margin-bottom:8px'});
@@ -621,6 +653,7 @@ function renderMain() {
   var ht1=mk('div',{class:'header-title'}); ht1.textContent='PIN Podsjetnik'; htxt.appendChild(ht1);
   var ht2=mk('div',{class:'header-sub'}); ht2.textContent='● AKTIVAN'; htxt.appendChild(ht2);
   hdr.appendChild(htxt);
+  hdr.appendChild(versionBadge());
   page.appendChild(hdr);
 
   // One-tap prompt only while permission can still be granted from here. A
@@ -1041,6 +1074,27 @@ function renderMain() {
     var infp=mk('p',{style:'font-size:12px;color:#333;line-height:1.7'});
     infp.textContent='Za pozadinske notifikacije: instaliraj app (Add to Home Screen) i dozvoli notifikacije. Podaci su lokalni na uređaju.';
     inf.appendChild(infp); page.appendChild(inf);
+
+    var vc = mk('div',{class:'card'});
+    var vct=mk('div',{class:'card-title'}); vct.textContent='O aplikaciji'; vc.appendChild(vct);
+    var vrow=mk('div',{class:'srow'});
+    var vrl=mk('div'); var vrll=mk('div',{class:'srow-label'}); vrll.textContent='Verzija'; vrl.appendChild(vrll);
+    var vrls=mk('div',{class:'srow-sub'});
+    vrls.textContent = APP.swUpdateAvailable ? APP_VERSION + ' (učitana) — nova je dostupna' : APP_VERSION;
+    vrl.appendChild(vrls); vrow.appendChild(vrl);
+    var vb=mk('button');
+    vb.textContent = APP.swUpdateAvailable ? 'Osvježi' : 'Provjeri';
+    vb.addEventListener('click', function(){
+      if (APP.swUpdateAvailable) { applySWUpdate(); return; }
+      if (APP.swReg) {
+        vb.textContent = '...';
+        APP.swReg.update().then(function(){
+          if (!APP.swUpdateAvailable) { vb.textContent = 'Ažurno ✓'; setTimeout(function(){ vb.textContent='Provjeri'; }, 2000); }
+        }).catch(function(){ vb.textContent = 'Provjeri'; });
+      }
+    });
+    vrow.appendChild(vb); vc.appendChild(vrow);
+    page.appendChild(vc);
   }
 
   // Install prompt banner
