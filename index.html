@@ -200,9 +200,50 @@ function isStandalone() {
   return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
          window.navigator.standalone === true;
 }
+function isAndroid() { return /Android/.test(navigator.userAgent); }
 // iOS only exposes the Notification API to an installed PWA, so asking from
 // the browser tab can't work — say so instead of failing silently.
 function notifNeedsInstall() { return isIOS() && !isStandalone(); }
+
+// A denied permission can never be re-requested by script — the user has to
+// flip it in system/browser settings, so spell out where.
+function notifUnblockSteps() {
+  if (isAndroid() && isStandalone()) {
+    return ['Drži prst na ikoni aplikacije → App info (ⓘ)',
+            'Otvori Notifications / Obavijesti',
+            'Uključi "All notifications"',
+            'Vrati se u app — status se osvježi sam'];
+  }
+  if (isAndroid()) {
+    return ['U Chromeu dodirni ikonu lijevo od adrese (🔒 ili ⚙)',
+            'Permissions → Notifications → Allow',
+            'Ili: Chrome ⋮ → Settings → Site settings → Notifications',
+            'Vrati se u app — status se osvježi sam'];
+  }
+  if (isIOS()) {
+    return ['iPhone Settings → Notifications',
+            'Nađi "PIN Podsjetnik" na listi',
+            'Uključi Allow Notifications',
+            'Vrati se u app — status se osvježi sam'];
+  }
+  return ['Dodirni ikonu lijevo od adrese u pregledniku',
+          'Notifications → Allow / Dozvoli',
+          'Vrati se u app — status se osvježi sam'];
+}
+
+// The user fixes the permission outside the app, so re-read it on return
+// instead of leaving a stale "Blokirano" on screen.
+function refreshNotifPerm() {
+  if (!('Notification' in window)) return;
+  var now = Notification.permission;
+  if (now !== APP.notifPerm) {
+    APP.notifPerm = now;
+    APP.notifMsg = now === 'granted' ? 'Notifikacije su dozvoljene ✓' : '';
+    render();
+  }
+}
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) refreshNotifPerm(); });
+window.addEventListener('focus', refreshNotifPerm);
 
 function markNotifAsked() { APP.notifAsked = true; lsSet('notif_asked', true); }
 
@@ -582,36 +623,21 @@ function renderMain() {
   hdr.appendChild(htxt);
   page.appendChild(hdr);
 
-  // Notification banner — only while it can still lead somewhere, and it stops
-  // reappearing once asked (the result is always visible under ⚙).
-  var needsNotif = APP.notifPerm === 'default' || APP.notifPerm === 'unsupported';
-  if (needsNotif && !APP.notifAsked) {
+  // One-tap prompt only while permission can still be granted from here. A
+  // blocked permission cannot be re-requested by script, so nothing is shown
+  // at the top for it — the full status and instructions live under ⚙.
+  if (APP.notifPerm === 'default' && !APP.notifAsked) {
     var bn = mk('div',{class:'banner banner-warn'});
-    var bp = mk('p');
-    bp.textContent = notifNeedsInstall()
-      ? '⚠ Dodaj app na početni ekran da alarm radi u pozadini.'
-      : '⚠ Dozvoli notifikacije za rad u pozadini.';
+    var bp = mk('p'); bp.textContent='⚠ Dozvoli notifikacije za rad u pozadini.';
     bn.appendChild(bp);
-    if (!notifNeedsInstall()) {
-      var bb = mk('button'); bb.textContent='Dozvoli';
-      bb.addEventListener('click', requestNotifPerm);
-      bn.appendChild(bb);
-    }
+    var bb = mk('button'); bb.textContent='Dozvoli';
+    bb.addEventListener('click', requestNotifPerm);
+    bn.appendChild(bb);
     var bx = mk('button',{style:'background:transparent;color:#f0ede8;opacity:.5;padding:6px 8px'});
     bx.textContent='×';
     bx.addEventListener('click', function(){ markNotifAsked(); render(); });
     bn.appendChild(bx);
     page.appendChild(bn);
-  }
-  // Result of the last permission request
-  if (APP.notifMsg) {
-    var mb = mk('div',{class:'banner '+(APP.notifPerm==='granted'?'banner-info':'banner-warn')});
-    var mp = mk('p'); mp.textContent=APP.notifMsg; mb.appendChild(mp);
-    var mx = mk('button',{style:'background:transparent;color:#f0ede8;opacity:.5;padding:6px 8px'});
-    mx.textContent='×';
-    mx.addEventListener('click', function(){ APP.notifMsg=''; render(); });
-    mb.appendChild(mx);
-    page.appendChild(mb);
   }
 
   // Tabs
@@ -968,7 +994,7 @@ function renderMain() {
     var nrls=mk('div',{class:'srow-sub'});
     nrls.textContent =
       APP.notifPerm==='granted' ? 'Dozvoljeno ✓' :
-      APP.notifPerm==='denied'  ? 'Blokirano — uključi u postavkama preglednika' :
+      APP.notifPerm==='denied'  ? 'Blokirano' :
       APP.notifPerm==='unsupported' ? (notifNeedsInstall() ? 'Dostupno tek nakon instalacije na početni ekran' : 'Preglednik ne podržava') :
                                   'Nije postavljeno';
     nrl.appendChild(nrls); nrow.appendChild(nrl);
@@ -978,6 +1004,32 @@ function renderMain() {
       nrow.appendChild(nb);
     }
     nc.appendChild(nrow);
+
+    // Blocked can only be undone outside the app — show exactly where.
+    if (APP.notifPerm === 'denied') {
+      var how = mk('div',{style:'padding-top:12px'});
+      var howT = mk('div',{style:'font-size:12px;color:#f0ede8;font-weight:700;margin-bottom:8px'});
+      howT.textContent = 'Kako odblokirati:';
+      how.appendChild(howT);
+      notifUnblockSteps().forEach(function(step, i) {
+        var line = mk('div',{style:'font-size:12px;color:#666;line-height:1.65;margin-bottom:4px'});
+        line.textContent = (i+1) + '. ' + step;
+        how.appendChild(line);
+      });
+      var recheck = mk('button',{style:'margin-top:10px;font-size:13px;color:#e24b4a;font-weight:700;background:none;border:1px solid #2a2a2a;border-radius:8px;padding:9px 14px;cursor:pointer'});
+      recheck.textContent = 'Provjeri ponovo';
+      recheck.addEventListener('click', function(){
+        var before = APP.notifPerm;
+        refreshNotifPerm();
+        if (Notification.permission === before) {
+          APP.notifMsg = 'I dalje blokirano. Provjeri korake iznad pa dodirni ponovo.';
+          render();
+        }
+      });
+      how.appendChild(recheck);
+      nc.appendChild(how);
+    }
+
     if (APP.notifMsg) {
       var nmsg = mk('div',{style:'font-size:12px;color:#666;line-height:1.6;padding-top:10px'});
       nmsg.textContent = APP.notifMsg;
