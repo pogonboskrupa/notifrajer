@@ -1,4 +1,4 @@
-const CACHE = 'pin-reminder-v10';
+const CACHE = 'pin-reminder-v11';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.svg', './icon-512.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const SCHEDULE_CACHE = 'pin-reminder-schedules';
 
@@ -50,6 +50,21 @@ async function maybeShowPending(id, title, note, time, fireAt) {
   if (fireAt - Date.now() <= PENDING_WINDOW_MS) {
     await showPendingNotification(id, title, note, time);
   }
+}
+
+// ── Immediate "added" confirmation — proves the notification pipeline works
+// the moment the user taps Add, regardless of how far off the alarm is ─────
+async function showAddedConfirmation(label) {
+  try {
+    await self.registration.showNotification('✅ Dodano', {
+      body: label,
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag: 'added-' + Date.now(),
+      requireInteraction: false,
+      silent: false
+    });
+  } catch(_) {}
 }
 
 // ── Show a persistent "pending" notification (silent, appears immediately) ─
@@ -185,11 +200,15 @@ self.addEventListener('message', async e => {
   const { type } = e.data;
 
   if (type === 'SCHEDULE') {
-    const { id, title, note, time, fireAt } = e.data;
+    const { id, title, note, time, fireAt, confirmLabel } = e.data;
     await saveSchedule(id, { id, title, note, time, fireAt });
     // Show it in the notification bar once the alarm is near (within 24h)
     await maybeShowPending(id, title, note, time, fireAt);
     setAlarmTimer(id, title, note, time, fireAt);
+    // confirmLabel is only set when the user just tapped Add — an immediate,
+    // separate confirmation so it's obvious the notification pipeline works
+    // right away, even for a calendar task scheduled months out.
+    if (confirmLabel) await showAddedConfirmation(confirmLabel);
   }
 
   if (type === 'DISMISS') {

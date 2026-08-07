@@ -155,7 +155,7 @@ button,input,select{font-family:inherit;font-size:inherit}
 // Bump on every deploy — shown in the header so it's obvious (without opening
 // devtools) whether a device is actually running the latest build, and must
 // match sw.js's CACHE string so a stale service worker is easy to spot too.
-var APP_VERSION = 'v10';
+var APP_VERSION = 'v11';
 
 // ── Globals ───────────────────────────────────────────────────────────────
 var APP = {
@@ -332,7 +332,10 @@ function swPost(data) {
   if (c) c.postMessage(data);
   else if (APP.swReg && APP.swReg.active) APP.swReg.active.postMessage(data);
 }
-function scheduleRem(r) {
+// announce=true shows an immediate "added" notification in the tray — only
+// pass it from the user's own Add action, never from the bulk re-schedule on
+// app load/dismiss, or every existing reminder would re-fire it on refresh.
+function scheduleRem(r, announce) {
   var now = new Date(), fire = new Date();
   var p = r.time.split(':');
   fire.setHours(+p[0], +p[1], 0, 0);
@@ -342,18 +345,22 @@ function scheduleRem(r) {
     var guard = 0;
     while ((fire.getDay() === 0 || fire.getDay() === 6) && guard++ < 7) fire.setDate(fire.getDate() + 1);
   }
-  swPost({ type: 'SCHEDULE', id: r.id, title: r.title, note: r.note, time: r.time, fireAt: fire.getTime() });
+  var msg = { type: 'SCHEDULE', id: r.id, title: r.title, note: r.note, time: r.time, fireAt: fire.getTime() };
+  if (announce) msg.confirmLabel = r.title + ' — ' + fmtTime(r.time) + ' · ' + rl(r.repeat);
+  swPost(msg);
 }
 function cancelRem(id) {
   swPost({ type: 'CANCEL', id: id });
   try { localStorage.removeItem('lf_' + id); } catch(e) {} // drop the fallback-fired marker
 }
-function scheduleEvent(ev) {
+function scheduleEvent(ev, announce) {
   if (!ev.time) return; // no time set → note only, no alarm
   var p = ev.time.split(':'), d = ev.date.split('-').map(Number);
   var fire = new Date(d[0], d[1]-1, d[2], +p[0], +p[1], 0, 0);
   if (fire <= new Date()) return; // don't schedule past events
-  swPost({ type: 'SCHEDULE', id: ev.id, title: ev.title, note: ev.note, time: ev.time, fireAt: fire.getTime() });
+  var msg = { type: 'SCHEDULE', id: ev.id, title: ev.title, note: ev.note, time: ev.time, fireAt: fire.getTime() };
+  if (announce) msg.confirmLabel = ev.title + ' — ' + fmtDateLabel(ev.date) + ' u ' + fmtTime(ev.time);
+  swPost(msg);
 }
 
 // ── Audio ─────────────────────────────────────────────────────────────────
@@ -726,7 +733,7 @@ function renderMain() {
       if(!APP.addTitle.trim()||!APP.addTime) return;
       var r={id:Date.now(),title:APP.addTitle.trim(),note:APP.addNote.trim(),time:APP.addTime,repeat:APP.addRepeat,fired:false};
       saveRems(getRems().concat([r]));
-      scheduleRem(r);
+      scheduleRem(r, true);
       APP.addTitle=''; APP.addNote=''; APP.addTime=''; APP.addRepeat='daily'; APP.tab='list';
       render();
     });
@@ -959,7 +966,7 @@ function renderMain() {
       if (!APP.calAddTitle.trim() || !APP.calSelDate) return;
       var ev={id:'ev'+Date.now(),date:APP.calSelDate,time:APP.calAddTime,title:APP.calAddTitle.trim(),note:APP.calAddNote.trim(),fired:false};
       saveEvents(getEvents().concat([ev]));
-      scheduleEvent(ev);
+      scheduleEvent(ev, true);
       APP.calAddTitle=''; APP.calAddTime=''; APP.calAddNote='';
       render();
     });
@@ -1149,8 +1156,8 @@ APP.installDismissed = !!lsGet('install_dismissed', false);
 APP.notifAsked = !!lsGet('notif_asked', false);
 APP.calSelDate = todayKey();
 initSW();
-getRems().filter(function(r){ return !r.fired; }).forEach(scheduleRem);
-getEvents().filter(function(e){ return !e.fired; }).forEach(scheduleEvent);
+getRems().filter(function(r){ return !r.fired; }).forEach(function(r){ scheduleRem(r); });
+getEvents().filter(function(e){ return !e.fired; }).forEach(function(e){ scheduleEvent(e); });
 
 // Handle URL parameters from notification click or shortcut
 (function() {
