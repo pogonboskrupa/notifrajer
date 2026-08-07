@@ -161,6 +161,8 @@ var APP = {
   pinInput: '', perr: '',
   addTitle: '', addNote: '', addTime: '', addRepeat: 'daily',
   notifPerm: ('Notification' in window) ? Notification.permission : 'unsupported',
+  notifMsg: '',         // feedback after a permission request
+  notifAsked: false,    // persisted: banner stops nagging once asked/dismissed
   swReg: null,
   installPrompt: null,  // deferred beforeinstallprompt event
   installDismissed: false,
@@ -188,6 +190,58 @@ function getCats() { return lsGet('note_categories', []); }
 function saveCats(c) { lsSet('note_categories', c); }
 function getEvents() { return lsGet('cal_events', []); }
 function saveEvents(e) { lsSet('cal_events', e); }
+
+// ── Notification permission ───────────────────────────────────────────────
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function isStandalone() {
+  return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+         window.navigator.standalone === true;
+}
+// iOS only exposes the Notification API to an installed PWA, so asking from
+// the browser tab can't work — say so instead of failing silently.
+function notifNeedsInstall() { return isIOS() && !isStandalone(); }
+
+function markNotifAsked() { APP.notifAsked = true; lsSet('notif_asked', true); }
+
+function requestNotifPerm() {
+  markNotifAsked();
+  if (!('Notification' in window) || typeof Notification.requestPermission !== 'function') {
+    APP.notifPerm = 'unsupported';
+    APP.notifMsg = notifNeedsInstall()
+      ? 'Na iPhoneu prvo dodaj app na početni ekran (Podijeli → Add to Home Screen), pa dozvoli notifikacije iz aplikacije.'
+      : 'Ovaj preglednik ne podržava notifikacije.';
+    render();
+    return;
+  }
+  var settled = false;
+  function done(p) {
+    if (settled) return;   // some browsers fire both the callback and the promise
+    settled = true;
+    APP.notifPerm = p || Notification.permission;
+    APP.notifMsg =
+      APP.notifPerm === 'granted' ? 'Notifikacije su dozvoljene ✓' :
+      APP.notifPerm === 'denied'  ? 'Notifikacije su blokirane. Uključi ih ručno u postavkama preglednika ili aplikacije.' :
+                                    'Dozvola nije data. Klikni ponovo i potvrdi u prozoru preglednika.';
+    render();
+  }
+  function fail(e) {
+    if (settled) return;
+    settled = true;
+    APP.notifPerm = ('Notification' in window) ? Notification.permission : 'unsupported';
+    APP.notifMsg = notifNeedsInstall()
+      ? 'Na iPhoneu prvo dodaj app na početni ekran (Podijeli → Add to Home Screen), pa dozvoli notifikacije iz aplikacije.'
+      : 'Preglednik je odbio zahtjev za notifikacije. Provjeri postavke stranice.';
+    render();
+  }
+  try {
+    // Safari < 16 uses the legacy callback form and returns undefined
+    var r = Notification.requestPermission(done);
+    if (r && typeof r.then === 'function') r.then(done)['catch'](fail);
+  } catch(e) { fail(e); }
+}
 
 // ── Install prompt ────────────────────────────────────────────────────────
 window.addEventListener('beforeinstallprompt', function(e) {
@@ -528,16 +582,36 @@ function renderMain() {
   hdr.appendChild(htxt);
   page.appendChild(hdr);
 
-  // Notification banner
-  if (APP.notifPerm === 'default') {
+  // Notification banner — only while it can still lead somewhere, and it stops
+  // reappearing once asked (the result is always visible under ⚙).
+  var needsNotif = APP.notifPerm === 'default' || APP.notifPerm === 'unsupported';
+  if (needsNotif && !APP.notifAsked) {
     var bn = mk('div',{class:'banner banner-warn'});
-    var bp = mk('p'); bp.textContent='⚠ Dozvoli notifikacije za rad u pozadini.'; bn.appendChild(bp);
-    var bb = mk('button'); bb.textContent='Dozvoli';
-    bb.addEventListener('click', function(){
-      Notification.requestPermission().then(function(p){ APP.notifPerm=p; render(); });
-    });
-    bn.appendChild(bb);
+    var bp = mk('p');
+    bp.textContent = notifNeedsInstall()
+      ? '⚠ Dodaj app na početni ekran da alarm radi u pozadini.'
+      : '⚠ Dozvoli notifikacije za rad u pozadini.';
+    bn.appendChild(bp);
+    if (!notifNeedsInstall()) {
+      var bb = mk('button'); bb.textContent='Dozvoli';
+      bb.addEventListener('click', requestNotifPerm);
+      bn.appendChild(bb);
+    }
+    var bx = mk('button',{style:'background:transparent;color:#f0ede8;opacity:.5;padding:6px 8px'});
+    bx.textContent='×';
+    bx.addEventListener('click', function(){ markNotifAsked(); render(); });
+    bn.appendChild(bx);
     page.appendChild(bn);
+  }
+  // Result of the last permission request
+  if (APP.notifMsg) {
+    var mb = mk('div',{class:'banner '+(APP.notifPerm==='granted'?'banner-info':'banner-warn')});
+    var mp = mk('p'); mp.textContent=APP.notifMsg; mb.appendChild(mp);
+    var mx = mk('button',{style:'background:transparent;color:#f0ede8;opacity:.5;padding:6px 8px'});
+    mx.textContent='×';
+    mx.addEventListener('click', function(){ APP.notifMsg=''; render(); });
+    mb.appendChild(mx);
+    page.appendChild(mb);
   }
 
   // Tabs
@@ -892,14 +966,23 @@ function renderMain() {
     var nrow=mk('div',{class:'srow'});
     var nrl=mk('div'); var nrll=mk('div',{class:'srow-label'}); nrll.textContent='Status'; nrl.appendChild(nrll);
     var nrls=mk('div',{class:'srow-sub'});
-    nrls.textContent = APP.notifPerm==='granted'?'Dozvoljeno ✓':APP.notifPerm==='denied'?'Blokirano':'Nije postavljeno';
+    nrls.textContent =
+      APP.notifPerm==='granted' ? 'Dozvoljeno ✓' :
+      APP.notifPerm==='denied'  ? 'Blokirano — uključi u postavkama preglednika' :
+      APP.notifPerm==='unsupported' ? (notifNeedsInstall() ? 'Dostupno tek nakon instalacije na početni ekran' : 'Preglednik ne podržava') :
+                                  'Nije postavljeno';
     nrl.appendChild(nrls); nrow.appendChild(nrl);
-    if(APP.notifPerm==='default'){
+    if(APP.notifPerm==='default' || APP.notifPerm==='unsupported'){
       var nb=mk('button'); nb.textContent='Dozvoli';
-      nb.addEventListener('click', function(){ Notification.requestPermission().then(function(p){ APP.notifPerm=p; render(); }); });
+      nb.addEventListener('click', requestNotifPerm);
       nrow.appendChild(nb);
     }
     nc.appendChild(nrow);
+    if (APP.notifMsg) {
+      var nmsg = mk('div',{style:'font-size:12px;color:#666;line-height:1.6;padding-top:10px'});
+      nmsg.textContent = APP.notifMsg;
+      nc.appendChild(nmsg);
+    }
     page.appendChild(nc);
 
     var inf=mk('div',{class:'card',style:'border-color:transparent'});
@@ -957,6 +1040,7 @@ function render() {
 // ── Init ──────────────────────────────────────────────────────────────────
 APP.pin = lsGet('app_pin','');
 APP.installDismissed = !!lsGet('install_dismissed', false);
+APP.notifAsked = !!lsGet('notif_asked', false);
 APP.calSelDate = todayKey();
 initSW();
 getRems().filter(function(r){ return !r.fired; }).forEach(scheduleRem);
