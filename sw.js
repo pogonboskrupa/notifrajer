@@ -1,4 +1,4 @@
-const CACHE = 'pin-reminder-v4';
+const CACHE = 'pin-reminder-v5';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.svg', './icon-512.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const SCHEDULE_CACHE = 'pin-reminder-schedules';
 
@@ -42,6 +42,16 @@ async function clearAllSchedules() {
   await caches.delete(SCHEDULE_CACHE);
 }
 
+// Far-future items (calendar tasks months out) must not sit in the tray for
+// months — the pending pin only appears once the alarm is within a day.
+const PENDING_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+async function maybeShowPending(id, title, note, time, fireAt) {
+  if (fireAt - Date.now() <= PENDING_WINDOW_MS) {
+    await showPendingNotification(id, title, note, time);
+  }
+}
+
 // ── Show a persistent "pending" notification (silent, appears immediately) ─
 async function showPendingNotification(id, title, note, time) {
   try {
@@ -77,19 +87,37 @@ async function showAlarmNotification(id, title, note) {
 // ── Timers ─────────────────────────────────────────────────────────────────
 const timers = {};
 
+// setTimeout delays are a signed 32-bit int (~24.8 days); anything larger
+// overflows and fires immediately, so long waits are chained in chunks.
+const MAX_DELAY = 2147483647;
+
+async function fireAlarm(id, title, note) {
+  delete timers[id];
+  await deleteSchedule(id);
+  // Replace pending notification with alarm notification
+  await showAlarmNotification(id, title, note);
+  // Notify any open app windows
+  const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+  for (const w of list) w.postMessage({ type: 'ALARM', id, title, note });
+}
+
 function setAlarmTimer(id, title, note, time, fireAt) {
   if (timers[id]) clearTimeout(timers[id]);
   const delay = fireAt - Date.now();
   if (delay < 0) return;
-  timers[id] = setTimeout(async () => {
-    delete timers[id];
-    await deleteSchedule(id);
-    // Replace pending notification with alarm notification
-    await showAlarmNotification(id, title, note);
-    // Notify any open app windows
-    const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const w of list) w.postMessage({ type: 'ALARM', id, title, note });
-  }, delay);
+  if (delay > MAX_DELAY) {
+    timers[id] = setTimeout(() => setAlarmTimer(id, title, note, time, fireAt), MAX_DELAY);
+    return;
+  }
+  // Surface the pending pin once the alarm enters the 24h window
+  if (delay > PENDING_WINDOW_MS) {
+    timers[id] = setTimeout(() => {
+      showPendingNotification(id, title, note, time);
+      setAlarmTimer(id, title, note, time, fireAt);
+    }, delay - PENDING_WINDOW_MS);
+    return;
+  }
+  timers[id] = setTimeout(() => fireAlarm(id, title, note), delay);
 }
 
 // ── Restore schedules after SW restart ─────────────────────────────────────
@@ -99,7 +127,7 @@ async function restoreSchedules() {
   for (const s of schedules) {
     if (s.fireAt > now) {
       // Re-show the pending notification (in case it was dismissed while SW was dead)
-      await showPendingNotification(s.id, s.title, s.note, s.time);
+      await maybeShowPending(s.id, s.title, s.note, s.time, s.fireAt);
       setAlarmTimer(s.id, s.title, s.note, s.time, s.fireAt);
     } else if (now - s.fireAt < 10 * 60 * 1000) {
       // Missed alarm within 10 min — fire it now
@@ -116,14 +144,39 @@ async function restoreSchedules() {
 // ── Fetch (offline-first) ──────────────────────────────────────────────────
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+
+  // Navigations (incl. ./?alarm=… from a notification click) carry a query
+  // string that never matches a cached entry, so match the shell ignoring it.
+  // Cache-first keeps the alarm screen instant on a tapped notification; the
+  // shell is refreshed in the background for the next launch.
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      caches.match('./index.html', { cacheName: CACHE, ignoreSearch: true }).then(cached => {
+        const network = fetch(e.request).then(res => {
+          if (res && res.status === 200) {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put('./index.html', clone));
+          }
+          return res;
+        });
+        if (cached) { network.catch(() => {}); return cached; }
+        return network.catch(() =>
+          new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } })
+        );
+      })
+    );
+    return;
+  }
+
+  // Only cache same-origin assets; third-party responses would bloat the cache.
   e.respondWith(
     caches.match(e.request, { cacheName: CACHE }).then(r => r || fetch(e.request).then(res => {
-      if (res && res.status === 200) {
+      if (res && res.status === 200 && new URL(e.request.url).origin === self.location.origin) {
         const clone = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, clone));
       }
       return res;
-    }))
+    }).catch(() => caches.match(e.request, { cacheName: CACHE })))
   );
 });
 
@@ -134,8 +187,8 @@ self.addEventListener('message', async e => {
   if (type === 'SCHEDULE') {
     const { id, title, note, time, fireAt } = e.data;
     await saveSchedule(id, { id, title, note, time, fireAt });
-    // Show notification immediately so it's visible in the notification bar
-    await showPendingNotification(id, title, note, time);
+    // Show it in the notification bar once the alarm is near (within 24h)
+    await maybeShowPending(id, title, note, time, fireAt);
     setAlarmTimer(id, title, note, time, fireAt);
   }
 

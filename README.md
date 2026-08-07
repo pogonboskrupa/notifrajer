@@ -6,11 +6,14 @@ Podsjetnik zaštićen PIN-om. Alarm se ne može ugasiti bez ispravnog koda.
 
 ```
 pin-reminder-pwa/
-├── index.html      ← Cijela aplikacija
-├── sw.js           ← Service worker (offline + notifikacije)
-├── manifest.json   ← PWA manifest
-├── icon-192.svg    ← Ikona (192×192)
-├── icon-512.svg    ← Ikona (512×512)
+├── index.html               ← Cijela aplikacija
+├── sw.js                    ← Service worker (offline + notifikacije)
+├── manifest.json            ← PWA manifest
+├── icon-192.png/.svg        ← Ikona (192×192, any + maskable)
+├── icon-512.png/.svg        ← Ikona (512×512, any + maskable)
+├── apple-touch-icon.png     ← iOS ikona (180×180)
+├── screenshot-narrow-*.png  ← Screenshotovi za install UI (mobilni)
+├── screenshot-wide-1.png    ← Screenshot za install UI (desktop)
 └── README.md
 ```
 
@@ -59,12 +62,36 @@ ngrok http 3000
 - **Kalendar** — mjesečni pregled; klikni na dan i dodaj šta i kad trebaš uraditi (tačkica označava dane sa zadacima). Ako postaviš vrijeme, zadatak zvoni kao alarm istog trenutka i traži PIN za gašenje — potpuno isto kao i obični podsjetnici
 - **⚙** — PIN, notifikacije, brisanje podataka
 
+## Pakovanje u aplikaciju (PWABuilder)
+
+Manifest je pripremljen za PWABuilder — ima `screenshots` (mobilni + desktop),
+`display_override`, `lang`/`dir`, `launch_handler`, `handle_links`, maskable ikone
+i tri shortcut-a (Dodaj / Kalendar / Bilješke).
+
+1. Prvo **deployaj na HTTPS** (Netlify, GitHub Pages, Vercel — vidi gore).
+   PWABuilder ne može pakovati `localhost` ni `http://`.
+2. Idi na https://www.pwabuilder.com i zalijepi URL svoje stranice.
+3. Provjeri report card — trebao bi proći sve obavezne stavke.
+4. **Package For Stores** → Android (`.aab`/`.apk`) ili Windows.
+5. Za Android: PWABuilder generiše i `assetlinks.json` — postavi ga na
+   `https://tvoj-domen/.well-known/assetlinks.json` da se ukloni URL traka.
+
+**Bitno za alarme u pakovanoj aplikaciji:**
+- Dozvoli notifikacije pri prvom pokretanju, inače alarm ne radi u pozadini.
+- U Android postavkama isključi optimizaciju baterije za aplikaciju
+  (Settings → Apps → PIN Podsjetnik → Battery → Unrestricted), inače sistem
+  može uspavati service worker i odgoditi alarm.
+
 ## Tehničke napomene
 
-- **Service Worker** (`sw.js`) prima poruke iz aplikacije i planira notifikacije
+- **Service Worker** (`sw.js`) prima poruke iz aplikacije i planira notifikacije.
+  Duga čekanja se lančaju u komadima jer `setTimeout` puca preko ~24.8 dana
 - **Web Audio API** generira zvuk alarma
-- **localStorage** čuva PIN i podsjetnike lokalno
-- **Offline podrška** — aplikacija radi bez interneta nakon prvog učitavanja
+- **localStorage** čuva PIN, podsjetnike, bilješke i kalendar lokalno
+- **Offline podrška** — aplikacija radi bez interneta nakon prvog učitavanja;
+  navigacija ide cache-first pa se alarm ekran otvara odmah po kliku na notifikaciju
+- **Pending notifikacija** se prikazuje tek kad je alarm unutar 24h, da zadaci
+  zakazani mjesecima unaprijed ne zatrpavaju traku s notifikacijama
 - **iOS Safari**: Mora biti instalirana kao PWA (Add to Home Screen) za pozadinske notifikacije
 
 ## Sigurnost

@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
 <meta name="apple-mobile-web-app-title" content="PIN Podsjetnik"/>
 <link rel="manifest" href="manifest.json"/>
+<link rel="icon" href="icon-192.png" type="image/png"/>
 <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
 <title>PIN Podsjetnik</title>
 <style>
@@ -222,9 +223,17 @@ function scheduleRem(r) {
   var p = r.time.split(':');
   fire.setHours(+p[0], +p[1], 0, 0);
   if (fire <= now) fire.setDate(fire.getDate() + 1);
+  // "radni dani" must skip Sat/Sun — otherwise the SW timer fires on weekends
+  if (r.repeat === 'weekdays') {
+    var guard = 0;
+    while ((fire.getDay() === 0 || fire.getDay() === 6) && guard++ < 7) fire.setDate(fire.getDate() + 1);
+  }
   swPost({ type: 'SCHEDULE', id: r.id, title: r.title, note: r.note, time: r.time, fireAt: fire.getTime() });
 }
-function cancelRem(id) { swPost({ type: 'CANCEL', id: id }); }
+function cancelRem(id) {
+  swPost({ type: 'CANCEL', id: id });
+  try { localStorage.removeItem('lf_' + id); } catch(e) {} // drop the fallback-fired marker
+}
 function scheduleEvent(ev) {
   if (!ev.time) return; // no time set → note only, no alarm
   var p = ev.time.split(':'), d = ev.date.split('-').map(Number);
@@ -252,8 +261,12 @@ function playBeep() {
     });
   } catch(e) {}
 }
-function startAlarm() { playBeep(); alarmTimer = setInterval(playBeep, 1400); }
-function stopAlarm() { clearInterval(alarmTimer); alarmTimer = null; }
+function startAlarm() {
+  stopAlarm(); // guard: a second alarm must not orphan the previous interval
+  playBeep();
+  alarmTimer = setInterval(playBeep, 1400);
+}
+function stopAlarm() { if (alarmTimer) { clearInterval(alarmTimer); alarmTimer = null; } }
 
 // ── Alarm trigger ─────────────────────────────────────────────────────────
 function triggerAlarm(data) {
@@ -785,7 +798,7 @@ function renderMain() {
 
     var evF1 = mk('div',{class:'field'});
     var evL1 = mk('label'); evL1.textContent='Naziv *'; evF1.appendChild(evL1);
-    var evInp1 = mk('input',{type:'text',placeholder:'Što trebaš napraviti...'});
+    var evInp1 = mk('input',{type:'text',placeholder:'Šta trebaš uraditi...'});
     evInp1.value = APP.calAddTitle;
     evInp1.addEventListener('input', function(){ APP.calAddTitle=this.value; evAddBtn.disabled=!APP.calAddTitle.trim(); });
     evF1.appendChild(evInp1); evCard.appendChild(evF1);
@@ -963,8 +976,10 @@ getEvents().filter(function(e){ return !e.fired; }).forEach(scheduleEvent);
       }
     } catch(e) {}
     history.replaceState(null, '', location.pathname);
-  } else if (actionParam === 'add' && APP.pin) {
-    APP.tab = 'add';
+  } else if (actionParam && APP.pin) {
+    // Manifest shortcuts: ?action=add | calendar | notes
+    var tabs = { add: 'add', calendar: 'calendar', notes: 'notes' };
+    if (tabs[actionParam]) APP.tab = tabs[actionParam];
     history.replaceState(null, '', location.pathname);
   }
 })();
