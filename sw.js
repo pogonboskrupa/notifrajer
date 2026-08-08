@@ -1,6 +1,9 @@
-const CACHE = 'pin-reminder-v13';
+const CACHE = 'pin-reminder-v14';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.svg', './icon-512.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const SCHEDULE_CACHE = 'pin-reminder-schedules';
+// Empty = feature disabled. Must match the constant of the same name in
+// index.html — see worker/README.md for deployment.
+const PUSH_SERVER_URL = '';
 
 // ── Install ────────────────────────────────────────────────────────────────
 self.addEventListener('install', e => {
@@ -125,6 +128,20 @@ async function fireAlarm(id, title, note) {
   // Notify any open app windows
   const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
   for (const w of list) w.postMessage({ type: 'ALARM', id, title, note });
+  notifyServerFired(id); // best-effort — stop the push server from also firing this one
+}
+
+// Tells the push server this device already handled the alarm locally and
+// on time, so its cron sweep won't send a redundant push for it later.
+// Fire-and-forget: if it fails (offline, server not deployed), the push
+// path's own dedup check (does a local schedule entry still exist?) is the
+// real safety net, this is just an optimization to avoid a double-fire.
+function notifyServerFired(id) {
+  if (!PUSH_SERVER_URL) return;
+  fetch(PUSH_SERVER_URL + '/api/cancel', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  }).catch(() => {});
 }
 
 function setAlarmTimer(id, title, note, time, fireAt) {
@@ -291,16 +308,26 @@ self.addEventListener('notificationclick', e => {
   );
 });
 
-// ── Push (future use) ──────────────────────────────────────────────────────
+// ── Push — the reliable backup path when this device's own setTimeout got
+// killed in the background (see worker/README.md) ──────────────────────────
 self.addEventListener('push', e => {
   if (!e.data) return;
-  const d = e.data.json();
-  e.waitUntil(
-    self.registration.showNotification('🔔 ' + (d.title || 'Podsjetnik'), {
-      body: d.note || '',
-      icon: './icon-192.png',
-      requireInteraction: true,
-      data: d
-    })
-  );
+  let d;
+  try { d = e.data.json(); } catch(_) { return; }
+  if (d.type !== 'ALARM') return;
+  e.waitUntil(handlePushAlarm(d));
 });
+
+async function handlePushAlarm(d) {
+  // Dedup against local scheduling: if this device's own timer already fired
+  // (fireAlarm deletes the schedule entry) or the user cancelled/dismissed
+  // it, there's nothing left in the schedule cache — skip re-showing it.
+  const schedules = await getAllSchedules();
+  if (!schedules.some(s => s.id == d.id)) return;
+
+  if (timers[d.id]) { clearTimeout(timers[d.id]); delete timers[d.id]; }
+  await deleteSchedule(d.id);
+  await showAlarmNotification(d.id, d.title, d.note);
+  const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+  for (const w of list) w.postMessage({ type: 'ALARM', id: d.id, title: d.title, note: d.note });
+}

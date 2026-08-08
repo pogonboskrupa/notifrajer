@@ -155,7 +155,14 @@ button,input,select{font-family:inherit;font-size:inherit}
 // Bump on every deploy — shown in the header so it's obvious (without opening
 // devtools) whether a device is actually running the latest build, and must
 // match sw.js's CACHE string so a stale service worker is easy to spot too.
-var APP_VERSION = 'v13';
+var APP_VERSION = 'v14';
+
+// ── Push server config ───────────────────────────────────────────────────
+// Empty = feature disabled, app behaves exactly as before (local-only
+// scheduling). Fill in after deploying worker/ (see worker/README.md) —
+// both values also need to match the same constants in sw.js.
+var PUSH_SERVER_URL = '';
+var VAPID_PUBLIC_KEY = '';
 
 // ── Globals ───────────────────────────────────────────────────────────────
 var APP = {
@@ -256,6 +263,62 @@ window.addEventListener('focus', refreshNotifPerm);
 
 function markNotifAsked() { APP.notifAsked = true; lsSet('notif_asked', true); }
 
+// ── Push server sync (optional — no-op until worker/ is deployed and the
+// PUSH_SERVER_URL/VAPID_PUBLIC_KEY constants above are filled in) ─────────
+function getDeviceId() {
+  var id = lsGet('device_id', null);
+  if (!id) {
+    id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('dev-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+    lsSet('device_id', id);
+  }
+  return id;
+}
+function urlBase64ToUint8Array(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var rawData = atob(base64);
+  var out = new Uint8Array(rawData.length);
+  for (var i = 0; i < rawData.length; i++) out[i] = rawData.charCodeAt(i);
+  return out;
+}
+function subscribeToPush() {
+  if (!PUSH_SERVER_URL || !VAPID_PUBLIC_KEY || !navigator.serviceWorker) return;
+  navigator.serviceWorker.ready.then(function(reg) {
+    return reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+  }).then(function(sub) {
+    var raw = sub.toJSON();
+    return fetch(PUSH_SERVER_URL + '/api/subscribe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId: getDeviceId(), endpoint: raw.endpoint, keys: raw.keys })
+    });
+  }).catch(function(e) { console.warn('Push subscribe failed:', e); });
+}
+function syncScheduleToServer(id, title, note, fireAt, repeat) {
+  if (!PUSH_SERVER_URL) return;
+  fetch(PUSH_SERVER_URL + '/api/schedule', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deviceId: getDeviceId(), id: id, title: title, note: note, fireAt: fireAt, repeat: repeat || 'once' })
+  }).catch(function(){});
+}
+function syncCancelToServer(id) {
+  if (!PUSH_SERVER_URL) return;
+  fetch(PUSH_SERVER_URL + '/api/cancel', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: id })
+  }).catch(function(){});
+}
+function syncCancelAllToServer() {
+  if (!PUSH_SERVER_URL) return;
+  var body = new Blob([JSON.stringify({ deviceId: getDeviceId() })], { type: 'application/json' });
+  // Called right before location.reload() — sendBeacon (not fetch) guarantees
+  // the request is actually dispatched even as the page starts unloading.
+  if (navigator.sendBeacon) navigator.sendBeacon(PUSH_SERVER_URL + '/api/cancel-all', body);
+  else fetch(PUSH_SERVER_URL + '/api/cancel-all', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body }).catch(function(){});
+}
+
 function requestNotifPerm() {
   markNotifAsked();
   if (!('Notification' in window) || typeof Notification.requestPermission !== 'function') {
@@ -275,6 +338,7 @@ function requestNotifPerm() {
       APP.notifPerm === 'granted' ? 'Notifikacije su dozvoljene ✓' :
       APP.notifPerm === 'denied'  ? 'Notifikacije su blokirane. Uključi ih ručno u postavkama preglednika ili aplikacije.' :
                                     'Dozvola nije data. Klikni ponovo i potvrdi u prozoru preglednika.';
+    if (APP.notifPerm === 'granted') subscribeToPush();
     render();
   }
   function fail(e) {
@@ -349,10 +413,12 @@ function scheduleRem(r, announce) {
   var msg = { type: 'SCHEDULE', id: r.id, title: r.title, note: r.note, time: r.time, fireAt: fire.getTime() };
   if (announce) msg.confirmLabel = r.title + ' — ' + fmtTime(r.time) + ' · ' + rl(r.repeat);
   swPost(msg);
+  syncScheduleToServer(r.id, r.title, r.note, fire.getTime(), r.repeat);
 }
 function cancelRem(id) {
   swPost({ type: 'CANCEL', id: id });
   try { localStorage.removeItem('lf_' + id); } catch(e) {} // drop the fallback-fired marker
+  syncCancelToServer(id);
 }
 function scheduleEvent(ev, announce) {
   if (!ev.time) return; // no time set → note only, no alarm
@@ -362,6 +428,7 @@ function scheduleEvent(ev, announce) {
   var msg = { type: 'SCHEDULE', id: ev.id, title: ev.title, note: ev.note, time: ev.time, fireAt: fire.getTime() };
   if (announce) msg.confirmLabel = ev.title + ' — ' + fmtDateLabel(ev.date) + ' u ' + fmtTime(ev.time);
   swPost(msg);
+  syncScheduleToServer(ev.id, ev.title, ev.note, fire.getTime(), 'once');
 }
 
 // ── Audio ─────────────────────────────────────────────────────────────────
@@ -1045,7 +1112,7 @@ function renderMain() {
     var rb2=mk('button'); rb2.textContent='Obriši';
     rb2.addEventListener('click', function(){
       if(!confirm('Obrisati sve podatke?')) return;
-      swPost({type:'CANCEL_ALL'}); lsClear(); location.reload();
+      swPost({type:'CANCEL_ALL'}); syncCancelAllToServer(); lsClear(); location.reload();
     });
     row2.appendChild(rb2); sc.appendChild(row2);
     page.appendChild(sc);
@@ -1194,6 +1261,7 @@ APP.installDismissed = !!lsGet('install_dismissed', false);
 APP.notifAsked = !!lsGet('notif_asked', false);
 APP.calSelDate = todayKey();
 initSW();
+if (('Notification' in window) && Notification.permission === 'granted') subscribeToPush();
 getRems().filter(function(r){ return !r.fired; }).forEach(function(r){ scheduleRem(r); });
 getEvents().filter(function(e){ return !e.fired; }).forEach(function(e){ scheduleEvent(e); });
 

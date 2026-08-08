@@ -1,0 +1,21 @@
+name = "notifrajer-push"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+# Runs every minute — the granularity ceiling for Cloudflare Cron Triggers,
+# meaning an alarm can fire up to ~59s after its scheduled time. Far better
+# than the previous "might never fire if the phone's SW got killed" situation.
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "notifrajer-push"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# Public by design — this is the client-facing VAPID key, safe to read from
+# the deployed Worker or embedded in index.html. The matching PRIVATE key
+# goes in as a secret (`wrangler secret put VAPID_PRIVATE_KEY_JWK`), never here.
+[vars]
+VAPID_PUBLIC_KEY = "REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY"
+VAPID_SUBJECT = "mailto:REPLACE@example.com"
