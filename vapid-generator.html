@@ -1,0 +1,219 @@
+<title>VAPID ključevi — notifrajer-push</title>
+<style>
+:root{
+  --bg:#faf8f6; --surface:#ffffff; --surface-2:#f3efea;
+  --border:#e7e1d9; --text:#221f1c; --text-dim:#726a61; --text-faint:#a89e92;
+  --accent:#e24b4a; --accent-ink:#ffffff; --accent-soft:#fbe7e6;
+  --ok:#3c8a5b; --ok-soft:#e6f3ea;
+  --mono:ui-monospace,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --radius:12px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#17140f; --surface:#221e19; --surface-2:#2a2521;
+    --border:#3a332c; --text:#f2ede6; --text-dim:#a89e92; --text-faint:#6f6459;
+    --accent:#e2645f; --accent-ink:#1a1210; --accent-soft:#3a2320;
+    --ok:#6cbf8b; --ok-soft:#1f3327;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#17140f; --surface:#221e19; --surface-2:#2a2521;
+  --border:#3a332c; --text:#f2ede6; --text-dim:#a89e92; --text-faint:#6f6459;
+  --accent:#e2645f; --accent-ink:#1a1210; --accent-soft:#3a2320;
+  --ok:#6cbf8b; --ok-soft:#1f3327;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
+  min-height:100vh; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:560px; margin:0 auto; padding:28px 20px 60px}
+header{margin-bottom:28px}
+.eyebrow{
+  font-size:11px; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--accent); margin-bottom:8px;
+}
+h1{
+  font-size:26px; font-weight:800; letter-spacing:-.015em; margin:0 0 10px;
+  text-wrap:balance;
+}
+.lede{color:var(--text-dim); font-size:15px; max-width:60ch; margin:0}
+.lede code{font-family:var(--mono); font-size:.92em; background:var(--surface-2); padding:.1em .4em; border-radius:4px}
+
+.trust{
+  display:flex; align-items:center; gap:9px; margin-top:16px; padding:10px 14px;
+  background:var(--ok-soft); border:1px solid color-mix(in srgb, var(--ok) 35%, transparent);
+  border-radius:10px; font-size:13px; color:var(--text);
+}
+.trust svg{flex-shrink:0; color:var(--ok)}
+
+.card{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:22px; margin-bottom:16px;
+  box-shadow:0 1px 2px rgba(0,0,0,.03), 0 8px 20px -12px rgba(0,0,0,.08);
+}
+
+button.generate{
+  width:100%; padding:15px; border:none; border-radius:10px; font-family:inherit;
+  font-size:15px; font-weight:700; letter-spacing:-.01em; cursor:pointer;
+  background:var(--accent); color:var(--accent-ink);
+  box-shadow:0 4px 14px -4px color-mix(in srgb, var(--accent) 55%, transparent);
+  transition:transform .12s, opacity .12s;
+}
+button.generate:active{transform:scale(.985); opacity:.92}
+button.generate:disabled{opacity:.5; cursor:default; transform:none}
+
+.result{display:none; margin-top:18px}
+.result.show{display:block}
+
+.field{margin-bottom:16px}
+.field:last-child{margin-bottom:0}
+.field-label{
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  margin-bottom:7px;
+}
+.field-name{font-size:12px; font-weight:700; letter-spacing:.02em}
+.field-hint{font-size:11.5px; color:var(--text-faint)}
+.field-hint.warn{color:var(--accent); font-weight:600}
+
+.copybox{
+  display:flex; align-items:stretch; gap:0; background:var(--surface-2);
+  border:1px solid var(--border); border-radius:9px; overflow:hidden;
+}
+.copybox code{
+  flex:1; min-width:0; padding:11px 12px; font-family:var(--mono); font-size:12.5px;
+  color:var(--text); overflow-x:auto; white-space:nowrap; scrollbar-width:none;
+}
+.copybox code::-webkit-scrollbar{display:none}
+.copybox button{
+  flex-shrink:0; border:none; border-left:1px solid var(--border); background:var(--surface);
+  color:var(--text-dim); font-family:inherit; font-size:12px; font-weight:700;
+  padding:0 16px; cursor:pointer; white-space:nowrap;
+}
+.copybox button:active{background:var(--surface-2)}
+.copybox button.copied{color:var(--ok)}
+
+.steps{
+  list-style:none; margin:0; padding:0; counter-reset:step;
+  display:flex; flex-direction:column; gap:0;
+}
+.steps li{
+  counter-increment:step; position:relative; padding:0 0 18px 34px;
+  font-size:13.5px; color:var(--text-dim);
+}
+.steps li:last-child{padding-bottom:0}
+.steps li::before{
+  content:counter(step); position:absolute; left:0; top:-1px;
+  width:22px; height:22px; border-radius:50%; background:var(--surface-2);
+  border:1px solid var(--border); color:var(--text);
+  font-size:11px; font-weight:700; font-family:var(--mono);
+  display:flex; align-items:center; justify-content:center;
+}
+.steps li::after{
+  content:''; position:absolute; left:11px; top:22px; bottom:0; width:1px;
+  background:var(--border);
+}
+.steps li:last-child::after{display:none}
+.steps b{color:var(--text); font-weight:700}
+.steps code{font-family:var(--mono); font-size:.93em; background:var(--surface-2); padding:.05em .35em; border-radius:4px; color:var(--text)}
+
+.card-title{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-faint); margin:0 0 16px}
+
+footer{margin-top:24px; font-size:12px; color:var(--text-faint); text-align:center}
+footer a{color:inherit}
+
+@media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">notifrajer-push · jednokratna postavka</div>
+    <h1>Generiši VAPID ključeve</h1>
+    <p class="lede">Par ključeva koji dokazuje push servisu (FCM) da je baš tvoj worker poslao notifikaciju. Javni ide u kod, privatni ostaje tajna na Cloudflare-u.</p>
+    <div class="trust">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      Generiše se u tvom pregledniku. Ništa se ne šalje nikuda.
+    </div>
+  </header>
+
+  <div class="card">
+    <button class="generate" id="genBtn">Generiši ključeve</button>
+
+    <div class="result" id="result">
+      <div class="field">
+        <div class="field-label">
+          <span class="field-name">VAPID_PUBLIC_KEY</span>
+          <span class="field-hint">javni — u wrangler.toml i index.html</span>
+        </div>
+        <div class="copybox">
+          <code id="pubOut"></code>
+          <button data-copy="pubOut">Kopiraj</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">
+          <span class="field-name">VAPID_PRIVATE_KEY_JWK</span>
+          <span class="field-hint warn">tajna — nikad u kod, samo kao secret</span>
+        </div>
+        <div class="copybox">
+          <code id="privOut"></code>
+          <button data-copy="privOut">Kopiraj</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="card-title">Šta s njima</p>
+    <ol class="steps">
+      <li>Kopiraj <b>VAPID_PUBLIC_KEY</b> — ide u Worker settings kao var, i u <code>index.html</code> na dva mjesta</li>
+      <li>Kopiraj <b>VAPID_PRIVATE_KEY_JWK</b> — u Cloudflare dashboardu, na Worker-u, dodaj ga kao <b>secret</b> (ne obični var) pod istim imenom</li>
+      <li>Zatvori ovu stranicu — ključevi postoje samo dok je otvorena, ne čuvaju se nigdje</li>
+    </ol>
+  </div>
+
+  <footer>Web Crypto API (ECDSA P-256) · vidi <code>worker/README.md</code> za pun postupak</footer>
+</div>
+
+<script>
+function b64url(bytes) {
+  var bin = '';
+  for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function generate() {
+  var btn = document.getElementById('genBtn');
+  btn.disabled = true;
+  btn.textContent = 'Generišem…';
+  try {
+    var keyPair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+    var publicRaw = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey));
+    var privJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
+    var fullPrivJwk = { crv: 'P-256', kty: 'EC', x: privJwk.x, y: privJwk.y, d: privJwk.d };
+
+    document.getElementById('pubOut').textContent = b64url(publicRaw);
+    document.getElementById('privOut').textContent = JSON.stringify(fullPrivJwk);
+    document.getElementById('result').classList.add('show');
+    btn.textContent = 'Generiši nove ključeve';
+  } catch (e) {
+    btn.textContent = 'Greška — preglednik ne podržava Web Crypto (probaj drugi)';
+  }
+  btn.disabled = false;
+}
+
+document.getElementById('genBtn').addEventListener('click', generate);
+
+document.querySelectorAll('.copybox button').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var text = document.getElementById(btn.dataset.copy).textContent;
+    navigator.clipboard.writeText(text).then(function() {
+      var orig = btn.textContent;
+      btn.textContent = 'Kopirano ✓';
+      btn.classList.add('copied');
+      setTimeout(function() { btn.textContent = orig; btn.classList.remove('copied'); }, 1600);
+    });
+  });
+});
+</script>

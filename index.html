@@ -2,7 +2,7 @@
 <html lang="bs">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover"/>
 <meta name="theme-color" content="#f3f3f7"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -12,185 +12,255 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
 <title>PIN Podsjetnik</title>
 <style>
+/* ── Palette ──────────────────────────────────────────────────────────────
+   Every colour is defined once on bare :root (light). The dark blocks only
+   redefine the same tokens, so no component ever hardcodes a colour and the
+   two themes can't drift apart. */
+:root{
+  --bg:#f3f3f7; --surface:#ffffff; --surface-2:#eef0f4; --surface-3:#e4e4ea;
+  --border:#e4e4ea; --border-soft:#ececf2;
+  --text:#1c1c22; --text-dim:#6e6e77; --text-faint:#9a9aa4; --text-ghost:#c7c7d1;
+  --accent:#e24b4a; --accent-ink:#ffffff; --accent-soft:rgba(226,75,74,.08); --accent-line:rgba(226,75,74,.35);
+  --accent-glow:rgba(226,75,74,.28);
+  --ok:#2f8f5b;
+  --sh-1:0 1px 2px rgba(28,28,40,.04);
+  --sh-2:0 1px 2px rgba(28,28,40,.03),0 6px 16px rgba(28,28,40,.05);
+  --sh-3:0 -4px 16px rgba(28,28,40,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121216; --surface:#1b1b21; --surface-2:#24242c; --surface-3:#2e2e38;
+    --border:#30303a; --border-soft:#27272f;
+    --text:#f0f0f4; --text-dim:#a2a2ae; --text-faint:#76767f; --text-ghost:#4b4b56;
+    --accent:#f0605e; --accent-ink:#1a0f0f; --accent-soft:rgba(240,96,94,.12); --accent-line:rgba(240,96,94,.4);
+    --accent-glow:rgba(240,96,94,.22);
+    --ok:#5cc182;
+    --sh-1:0 1px 2px rgba(0,0,0,.3);
+    --sh-2:0 1px 2px rgba(0,0,0,.25),0 6px 16px rgba(0,0,0,.3);
+    --sh-3:0 -4px 16px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121216; --surface:#1b1b21; --surface-2:#24242c; --surface-3:#2e2e38;
+  --border:#30303a; --border-soft:#27272f;
+  --text:#f0f0f4; --text-dim:#a2a2ae; --text-faint:#76767f; --text-ghost:#4b4b56;
+  --accent:#f0605e; --accent-ink:#1a0f0f; --accent-soft:rgba(240,96,94,.12); --accent-line:rgba(240,96,94,.4);
+  --accent-glow:rgba(240,96,94,.22);
+  --ok:#5cc182;
+  --sh-1:0 1px 2px rgba(0,0,0,.3);
+  --sh-2:0 1px 2px rgba(0,0,0,.25),0 6px 16px rgba(0,0,0,.3);
+  --sh-3:0 -4px 16px rgba(0,0,0,.35);
+}
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{background:#f3f3f7}
-body{background:#f3f3f7;color:#1c1c22;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
-button,input,select{font-family:inherit;font-size:inherit}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;-webkit-tap-highlight-color:transparent;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
 
 /* Layout */
-.page{display:flex;flex-direction:column;min-height:100vh;max-width:430px;margin:0 auto;padding:0 16px 40px}
-.page-center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;max-width:430px;margin:0 auto;padding:0 24px 40px}
+.page{display:flex;flex-direction:column;min-height:100vh;max-width:430px;margin:0 auto;padding:0 16px calc(40px + env(safe-area-inset-bottom))}
+.page-center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;max-width:430px;margin:0 auto;padding:0 24px calc(40px + env(safe-area-inset-bottom))}
 
 /* Header */
-.header{display:flex;align-items:center;gap:12px;padding:24px 0 18px;border-bottom:1px solid #e9e9ef;margin-bottom:22px}
-.header-icon{width:36px;height:36px;background:#e24b4a;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 10px rgba(226,75,74,.28)}
+.header{display:flex;align-items:center;gap:12px;padding:calc(24px + env(safe-area-inset-top)) 0 18px;border-bottom:1px solid var(--border);margin-bottom:22px}
+.header-icon{width:36px;height:36px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 10px var(--accent-glow)}
 .header-title{font-size:18px;font-weight:700;letter-spacing:-.3px}
-.header-sub{font-size:11px;color:#e24b4a;margin-top:2px;letter-spacing:.5px}
-.header-version{margin-left:auto;flex-shrink:0;font-size:11px;color:#9a9aa4;font-weight:700;letter-spacing:.5px;background:#ffffff;border:1px solid #e4e4ea;border-radius:6px;padding:4px 8px;align-self:flex-start;box-shadow:0 1px 2px rgba(28,28,40,.04)}
-.header-version.stale{color:#e24b4a;border-color:#e24b4a}
+.header-sub{font-size:11px;color:var(--accent);margin-top:2px;letter-spacing:.5px}
+.header-version{margin-left:auto;flex-shrink:0;font-size:11px;color:var(--text-faint);font-weight:700;letter-spacing:.5px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;align-self:flex-start;box-shadow:var(--sh-1);cursor:default}
+.header-version.stale{color:var(--accent);border-color:var(--accent);cursor:pointer}
 
 /* Card */
-.card{background:#ffffff;border:1px solid #e4e4ea;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(28,28,40,.03),0 6px 16px rgba(28,28,40,.04)}
-.card-title{font-size:11px;font-weight:700;letter-spacing:1.4px;color:#6e6e77;text-transform:uppercase;margin-bottom:14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:var(--sh-2)}
+.card-title{font-size:11px;font-weight:700;letter-spacing:1.4px;color:var(--text-dim);text-transform:uppercase;margin-bottom:14px}
 
 /* Form */
 .field{margin-bottom:14px}
-.field label{display:block;font-size:12px;color:#6e6e77;margin-bottom:6px}
-.field input,.field select{width:100%;padding:11px 13px;background:#eef0f4;border:1px solid #dcdce4;border-radius:8px;color:#1c1c22;font-size:15px;outline:none;-webkit-appearance:none;appearance:none;transition:border-color .2s}
-.field input:focus,.field select:focus{border-color:#e24b4a;box-shadow:0 0 0 3px rgba(226,75,74,.12)}
-.field input::placeholder{color:#b6b6c0}
+.field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px}
+.field input,.field select,.inp{width:100%;padding:11px 13px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;outline:none;-webkit-appearance:none;appearance:none;transition:border-color .2s,box-shadow .2s}
+.field input:focus,.field select:focus,.inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.field input::placeholder,.inp::placeholder{color:var(--text-ghost)}
+.field-hint{font-size:11px;color:var(--text-faint);line-height:1.5;margin-top:-8px;margin-bottom:12px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
+/* Day picker */
+.daypick{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:14px}
+.daypick-btn{padding:9px 0;border:1px solid var(--border);background:var(--surface-2);border-radius:7px;font-size:11px;font-weight:700;color:var(--text-dim);cursor:pointer;transition:all .12s}
+.daypick-btn.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);box-shadow:0 2px 6px var(--accent-glow)}
+
 /* Buttons */
-.btn-red{width:100%;padding:14px;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;background:#e24b4a;color:#fff;transition:opacity .15s,transform .1s;box-shadow:0 4px 12px rgba(226,75,74,.28)}
+.btn-red{width:100%;padding:14px;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;background:var(--accent);color:var(--accent-ink);transition:opacity .15s,transform .1s;box-shadow:0 4px 12px var(--accent-glow)}
 .btn-red:active{opacity:.85;transform:scale(.98)}
 .btn-red:disabled{opacity:.35;cursor:default;box-shadow:none}
-.btn-ghost{width:100%;padding:12px;border:1px solid #dcdce4;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:#6e6e77;margin-top:10px}
-.btn-ghost:active{background:#eef0f4}
+.btn-ghost{width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:var(--text-dim);margin-top:10px}
+.btn-ghost:active{background:var(--surface-2)}
 
 /* Tabs */
-.tabs{display:flex;flex-wrap:wrap;border:1px solid #dcdce4;border-radius:8px;overflow:hidden;margin-bottom:20px;background:#ffffff}
-.tab{flex:1 1 20%;padding:11px 2px;text-align:center;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#86868f;position:relative;transition:all .15s;white-space:nowrap}
-.tab.active{background:#e24b4a;color:#fff;box-shadow:0 2px 8px rgba(226,75,74,.3)}
-.tab-badge{position:absolute;top:5px;right:6px;background:#fff;color:#e24b4a;font-size:10px;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700}
+.tabs{display:flex;flex-wrap:wrap;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:20px;background:var(--surface)}
+.tab{flex:1 1 20%;padding:11px 2px;text-align:center;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:var(--text-faint);position:relative;transition:all .15s;white-space:nowrap}
+.tab.active{background:var(--accent);color:var(--accent-ink);box-shadow:0 2px 8px var(--accent-glow)}
+.tab-badge{position:absolute;top:5px;right:6px;background:var(--surface);color:var(--accent);font-size:10px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700}
 
 /* PIN */
 .pin-dots{display:flex;gap:14px;justify-content:center;margin-bottom:28px}
-.dot{width:18px;height:18px;border-radius:50%;border:1.5px solid #dcdce4;transition:all .15s}
-.dot.on{background:#e24b4a;border-color:#e24b4a;transform:scale(1.1)}
+.dot{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--border);transition:all .15s}
+.dot.on{background:var(--accent);border-color:var(--accent);transform:scale(1.1)}
 .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:290px;width:100%;margin:0 auto}
-.pkey{height:65px;border:1px solid #dcdce4;background:#ffffff;border-radius:8px;font-size:22px;font-weight:700;cursor:pointer;color:#1c1c22;transition:background .1s;box-shadow:0 1px 2px rgba(28,28,40,.04)}
-.pkey:active{background:#e4e4ea}
-.pkey-del{font-size:14px;color:#86868f}
+.pkey{height:65px;border:1px solid var(--border);background:var(--surface);border-radius:8px;font-size:22px;font-weight:700;cursor:pointer;color:var(--text);transition:background .1s;box-shadow:var(--sh-1)}
+.pkey:active{background:var(--surface-3)}
+.pkey-del{font-size:14px;color:var(--text-faint)}
 .pkey-empty{visibility:hidden}
 
 /* Error */
-.err{font-size:13px;color:#e24b4a;text-align:center;min-height:20px;margin-bottom:12px}
+.err{font-size:13px;color:var(--accent);text-align:center;min-height:20px;margin-bottom:12px}
 
 /* Reminder item */
-.ri{display:flex;align-items:flex-start;gap:11px;padding:13px;background:#ffffff;border:1px solid #ececf2;border-radius:12px;margin-bottom:9px;box-shadow:0 1px 2px rgba(28,28,40,.03)}
-.ri-dot{width:8px;height:8px;border-radius:50%;background:#e24b4a;flex-shrink:0;margin-top:5px}
-.ri-dot.done{background:#c7c7d1}
+.ri{display:flex;align-items:flex-start;gap:11px;padding:13px;background:var(--surface);border:1px solid var(--border-soft);border-radius:12px;margin-bottom:9px;box-shadow:var(--sh-1)}
+.ri-tap{cursor:pointer;flex:1;min-width:0;display:flex;align-items:flex-start;gap:11px}
+.ri-tap:active{opacity:.65}
+.ri-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px}
+.ri-dot.done{background:var(--text-ghost)}
 .ri-body{flex:1;min-width:0}
 .ri-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
-.ri-meta{font-size:12px;color:#86868f}
-.ri-note{font-size:12px;color:#86868f;margin-top:3px}
-.ri-del{background:none;border:none;cursor:pointer;color:#9a9aa4;font-size:20px;line-height:1;padding:2px 5px;flex-shrink:0;transition:color .15s}
-.ri-del:active{color:#e24b4a}
+.ri-name.done{color:var(--text-faint);text-decoration:line-through}
+.ri-meta{font-size:12px;color:var(--text-faint)}
+.ri-note{font-size:12px;color:var(--text-faint);margin-top:3px}
+.ri-next{font-size:11px;color:var(--accent);margin-top:3px;font-weight:600}
+.ri-del{background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:20px;line-height:1;padding:2px 5px;flex-shrink:0;transition:color .15s}
+.ri-del:active{color:var(--accent)}
 
 /* Empty */
-.empty{text-align:center;padding:50px 0;color:#c7c7d1}
-.empty-icon{font-size:36px;margin-bottom:12px;opacity:.3}
+.empty{text-align:center;padding:50px 0;color:var(--text-ghost)}
+.empty-icon{font-size:36px;margin-bottom:12px;opacity:.35}
+.empty p{font-size:14px;line-height:1.7;color:var(--text-faint)}
 
 /* Alarm screen */
-.alarm-page{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 20px 48px;background:#f3f3f7}
-.alarm-ring{width:86px;height:86px;border-radius:50%;background:rgba(226,75,74,.1);border:2px solid #e24b4a;display:flex;align-items:center;justify-content:center;margin-bottom:24px;animation:pulse .8s ease-in-out infinite}
+.alarm-page{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:calc(32px + env(safe-area-inset-top)) 20px calc(48px + env(safe-area-inset-bottom));background:var(--bg)}
+.alarm-ring{width:86px;height:86px;border-radius:50%;background:var(--accent-soft);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;margin-bottom:24px;animation:pulse .8s ease-in-out infinite}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.alarm-badge{font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:20px;padding:5px 12px;margin-bottom:14px;text-align:center;line-height:1.5}
+.alarm-queue{font-size:11px;color:var(--text-faint);margin-top:14px}
 
 /* Banner */
 .banner{border-radius:8px;padding:11px 13px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-size:13px}
-.banner-warn{background:rgba(226,75,74,.08);border:1px solid rgba(226,75,74,.35);color:#1c1c22}
-.banner-info{background:#ffffff;border:1px solid #e4e4ea;color:#6e6e77;box-shadow:0 1px 2px rgba(28,28,40,.03)}
+.banner-warn{background:var(--accent-soft);border:1px solid var(--accent-line);color:var(--text)}
 .banner p{flex:1;line-height:1.5}
-.banner button{border:none;font-size:12px;font-weight:700;padding:6px 11px;border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0}
-.banner-warn button{background:#e24b4a;color:#fff}
-.banner-info button{background:#e4e4ea;color:#1c1c22}
+.banner button{border:none;font-size:12px;font-weight:700;padding:6px 11px;border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0;background:var(--accent);color:var(--accent-ink)}
 
-/* Settings */
-.srow{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid #ececf2}
+/* Settings rows */
+.srow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--border-soft)}
 .srow:last-child{border-bottom:none}
 .srow-label{font-size:14px;font-weight:700}
-.srow-sub{font-size:12px;color:#86868f;margin-top:2px}
-.srow button{font-size:13px;color:#e24b4a;font-weight:700;background:none;border:none;cursor:pointer;padding:2px 0}
+.srow-sub{font-size:12px;color:var(--text-faint);margin-top:2px;line-height:1.5}
+.srow button{font-size:13px;color:var(--accent);font-weight:700;background:none;border:none;cursor:pointer;padding:2px 0;flex-shrink:0}
+
+/* Segmented control */
+.seg{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0}
+.seg button{padding:7px 12px;font-size:12px;font-weight:700;border:none;background:var(--surface-2);color:var(--text-dim);cursor:pointer}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
 
 /* Install prompt */
-.install-bar{position:fixed;bottom:0;left:0;right:0;background:#ffffff;border-top:1px solid #dcdce4;padding:14px 16px;display:flex;align-items:center;gap:12px;z-index:100;max-width:430px;margin:0 auto;box-shadow:0 -4px 16px rgba(28,28,40,.06)}
-.install-bar-icon{width:40px;height:40px;border-radius:10px;background:#eef0f4;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.install-bar{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:14px 16px calc(14px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:12px;z-index:100;max-width:430px;margin:0 auto;box-shadow:var(--sh-3)}
+.install-bar-icon{width:40px;height:40px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
 .install-bar-icon img{width:100%;height:100%;border-radius:10px}
 .install-bar-text{flex:1;min-width:0}
 .install-bar-text strong{display:block;font-size:13px;font-weight:700}
-.install-bar-text span{font-size:11px;color:#86868f}
-.install-bar-btn{background:#e24b4a;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0}
-.install-bar-close{background:none;border:none;color:#9a9aa4;font-size:20px;cursor:pointer;padding:4px;flex-shrink:0;line-height:1}
+.install-bar-text span{font-size:11px;color:var(--text-faint)}
+.install-bar-btn{background:var(--accent);color:var(--accent-ink);border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0}
+.install-bar-close{background:none;border:none;color:var(--text-faint);font-size:20px;cursor:pointer;padding:4px;flex-shrink:0;line-height:1}
 
 /* Notes / Categories */
 .cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
-.cat-card{background:#ffffff;border:1px solid #ececf2;border-radius:12px;padding:14px;cursor:pointer;position:relative;box-shadow:0 1px 2px rgba(28,28,40,.03)}
+.cat-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:12px;padding:14px;cursor:pointer;position:relative;box-shadow:var(--sh-1)}
 .cat-card-name{font-size:14px;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:16px}
-.cat-card-count{font-size:12px;color:#86868f}
-.cat-card-del{position:absolute;top:8px;right:8px;background:none;border:none;color:#9a9aa4;font-size:16px;cursor:pointer;padding:2px 6px;line-height:1}
-.cat-card-del:active{color:#e24b4a}
-.cat-back{display:flex;align-items:center;gap:6px;margin-bottom:16px;cursor:pointer;color:#6e6e77;font-size:13px;font-weight:700;background:none;border:none;padding:4px 0}
-.cat-item{display:flex;align-items:center;gap:11px;padding:12px 13px;background:#ffffff;border:1px solid #ececf2;border-radius:12px;margin-bottom:9px;box-shadow:0 1px 2px rgba(28,28,40,.03)}
-.cat-item-check{width:21px;height:21px;border-radius:6px;border:1.5px solid #dcdce4;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;background:none}
-.cat-item-check.done{background:#e24b4a;border-color:#e24b4a}
+.cat-card-count{font-size:12px;color:var(--text-faint)}
+.cat-bar{height:3px;border-radius:2px;background:var(--surface-3);margin-top:9px;overflow:hidden}
+.cat-bar span{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .25s}
+.cat-card-del{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text-faint);font-size:16px;cursor:pointer;padding:2px 6px;line-height:1}
+.cat-card-del:active{color:var(--accent)}
+.cat-back{display:flex;align-items:center;gap:6px;margin-bottom:16px;cursor:pointer;color:var(--text-dim);font-size:13px;font-weight:700;background:none;border:none;padding:4px 0}
+.cat-item{display:flex;align-items:center;gap:11px;padding:12px 13px;background:var(--surface);border:1px solid var(--border-soft);border-radius:12px;margin-bottom:9px;box-shadow:var(--sh-1)}
+.cat-item-check{width:21px;height:21px;border-radius:6px;border:1.5px solid var(--border);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;background:none}
+.cat-item-check.done{background:var(--accent);border-color:var(--accent)}
 .cat-item-text{flex:1;font-size:14px;word-break:break-word}
-.cat-item-text.done{color:#9a9aa4;text-decoration:line-through}
+.cat-item-text.done{color:var(--text-faint);text-decoration:line-through}
 .add-inline{display:flex;gap:8px;margin-bottom:16px}
-.add-inline input{flex:1;padding:11px 13px;background:#eef0f4;border:1px solid #dcdce4;border-radius:8px;color:#1c1c22;font-size:15px;outline:none}
-.add-inline input:focus{border-color:#e24b4a;box-shadow:0 0 0 3px rgba(226,75,74,.12)}
-.add-inline button{flex-shrink:0;padding:0 18px;background:#e24b4a;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:20px;line-height:1;box-shadow:0 2px 8px rgba(226,75,74,.28)}
+.add-inline input{flex:1;padding:11px 13px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;outline:none}
+.add-inline input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.add-inline button{flex-shrink:0;padding:0 18px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:20px;line-height:1;box-shadow:0 2px 8px var(--accent-glow)}
 .add-inline button:disabled{opacity:.35}
 
 /* Calendar */
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.cal-nav button{background:#ffffff;border:1px solid #dcdce4;color:#1c1c22;width:34px;height:34px;border-radius:8px;font-size:16px;cursor:pointer;flex-shrink:0;box-shadow:0 1px 2px rgba(28,28,40,.04)}
+.cal-nav button{background:var(--surface);border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:8px;font-size:16px;cursor:pointer;flex-shrink:0;box-shadow:var(--sh-1)}
 .cal-nav-label{font-size:15px;font-weight:700;text-transform:capitalize}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:18px}
-.cal-dow{text-align:center;font-size:10px;color:#86868f;font-weight:700;padding-bottom:6px}
-.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;font-size:13px;cursor:pointer;position:relative;color:#3c3c44;background:#ffffff;border:1px solid transparent}
-.cal-day.other{color:#c7c7d1}
-.cal-day.today{border-color:#e24b4a}
-.cal-day.selected{background:#e24b4a;color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(226,75,74,.35)}
-.cal-day-dot{width:4px;height:4px;border-radius:50%;background:#e24b4a;position:absolute;bottom:5px}
-.cal-day.selected .cal-day-dot{background:#fff}
-.cal-events-title{font-size:11px;font-weight:700;letter-spacing:1.4px;color:#6e6e77;text-transform:uppercase;margin-bottom:12px}
-.ev-time{font-size:12px;color:#e24b4a;font-weight:700;flex-shrink:0;min-width:42px}
+.cal-dow{text-align:center;font-size:10px;color:var(--text-faint);font-weight:700;padding-bottom:6px}
+.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;font-size:13px;cursor:pointer;position:relative;color:var(--text);background:var(--surface);border:1px solid transparent}
+.cal-day.other{color:var(--text-ghost);background:transparent}
+.cal-day.today{border-color:var(--accent)}
+.cal-day.selected{background:var(--accent);color:var(--accent-ink);font-weight:700;box-shadow:0 2px 8px var(--accent-glow)}
+.cal-day-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);position:absolute;bottom:5px}
+.cal-day.selected .cal-day-dot{background:var(--accent-ink)}
+.cal-events-title{font-size:11px;font-weight:700;letter-spacing:1.4px;color:var(--text-dim);text-transform:uppercase;margin-bottom:12px}
+.ev-time{font-size:12px;color:var(--accent);font-weight:700;flex-shrink:0;min-width:42px;margin-top:2px}
+
+/* Toast */
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--text);color:var(--bg);font-size:13px;font-weight:600;padding:11px 18px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:9999;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:88vw;text-align:center;line-height:1.45}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
 </style>
 </head>
 <body>
 <div id="app"></div>
+<div id="toast"></div>
 <script>
 // Bump on every deploy — shown in the header so it's obvious (without opening
 // devtools) whether a device is actually running the latest build, and must
 // match sw.js's CACHE string so a stale service worker is easy to spot too.
-var APP_VERSION = 'v14';
+var APP_VERSION = 'v15';
 
 // ── Push server config ───────────────────────────────────────────────────
 // Empty = feature disabled, app behaves exactly as before (local-only
 // scheduling). Fill in after deploying worker/ (see worker/README.md) —
-// both values also need to match the same constants in sw.js.
+// PUSH_SERVER_URL also needs to match the same constant in sw.js.
 var PUSH_SERVER_URL = '';
 var VAPID_PUBLIC_KEY = '';
+
+// Matches MISSED_ALARM_WINDOW_MS in sw.js: how far past its time an alarm can
+// still be caught up rather than silently skipped.
+var MISSED_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 // ── Globals ───────────────────────────────────────────────────────────────
 var APP = {
   pin: '',
-  view: 'main',   // setup | main | alarm
-  tab: 'add',     // add | list | settings
-  alarm: null,
-  pendingAlarm: null, // alarm fired while app was backgrounded — shown once visible
+  view: 'main',   // setup | main
+  tab: 'add',     // add | list | notes | calendar | settings
+  alarm: null,        // currently displayed alarm
+  alarmQueue: [],     // alarms waiting their turn (or waiting for the app to be visible)
   setupStep: 'set',
   sp: '', sc: '', serr: '',
   pinInput: '', perr: '',
-  addTitle: '', addNote: '', addTime: '', addRepeat: 'daily',
+  addTitle: '', addNote: '', addTime: '', addRepeat: 'daily', addDays: [1,2,3,4,5],
+  editId: null,       // id being edited, or null when adding
+  listQuery: '',
   notifPerm: ('Notification' in window) ? Notification.permission : 'unsupported',
-  notifMsg: '',         // feedback after a permission request
-  notifAsked: false,    // persisted: banner stops nagging once asked/dismissed
+  notifMsg: '',
+  notifAsked: false,
   swReg: null,
   swUpdateAvailable: false,
-  installPrompt: null,  // deferred beforeinstallprompt event
+  installPrompt: null,
   installDismissed: false,
   // Notes / categories
-  notesCat: null,       // id of open category, or null for category grid
+  notesCat: null,
   newCatName: '',
   newItemText: '',
   // Calendar
   calYear: new Date().getFullYear(),
   calMonthIdx: new Date().getMonth(),
   calSelDate: '',
-  calAddTitle: '', calAddTime: '', calAddNote: ''
+  calAddTitle: '', calAddTime: '', calAddNote: '', calEditId: null
 };
 
 // ── Storage ───────────────────────────────────────────────────────────────
@@ -199,6 +269,7 @@ function lsGet(k, d) {
   catch(e) { return d; }
 }
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} }
+function lsDel(k) { try { localStorage.removeItem(k); } catch(e) {} }
 function lsClear() { try { localStorage.clear(); } catch(e) {} }
 function getRems() { return lsGet('reminders', []); }
 function saveRems(r) { lsSet('reminders', r); }
@@ -206,6 +277,66 @@ function getCats() { return lsGet('note_categories', []); }
 function saveCats(c) { lsSet('note_categories', c); }
 function getEvents() { return lsGet('cal_events', []); }
 function saveEvents(e) { lsSet('cal_events', e); }
+function getSettings() {
+  var s = lsGet('settings', {});
+  return { theme: s.theme || 'auto', snooze: s.snooze || 10 };
+}
+function saveSettings(s) { lsSet('settings', s); }
+
+// ── Theme ─────────────────────────────────────────────────────────────────
+function isDarkNow() {
+  var t = getSettings().theme;
+  if (t === 'dark') return true;
+  if (t === 'light') return false;
+  return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+function applyTheme() {
+  var t = getSettings().theme;
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t);
+  var m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute('content', isDarkNow() ? '#121216' : '#f3f3f7');
+}
+if (window.matchMedia) {
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+  var onScheme = function(){ if (getSettings().theme === 'auto') applyTheme(); };
+  if (mq.addEventListener) mq.addEventListener('change', onScheme);
+  else if (mq.addListener) mq.addListener(onScheme);
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+var toastTimer = null;
+function toast(msg) {
+  var el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('on');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove('on'); }, 2600);
+}
+
+// ── Repeat logic ──────────────────────────────────────────────────────────
+// Byte-for-byte identical to repeatDays()/computeNextFire() in sw.js. The two
+// schedule independently (SW timer vs. the in-page fallback below) and must
+// agree on the exact instant, or a repeating alarm fires twice a day apart.
+function repeatDays(repeat, days) {
+  if (repeat === 'weekdays') return [1,2,3,4,5];
+  if (repeat === 'custom') return (days && days.length) ? days : [0,1,2,3,4,5,6];
+  return null; // once | daily → any day of the week is fine
+}
+function computeNextFire(time, repeat, days, from) {
+  var base = new Date(from || Date.now());
+  var p = String(time).split(':');
+  var fire = new Date(base);
+  fire.setHours(+p[0], +p[1], 0, 0);
+  if (fire.getTime() <= base.getTime()) fire.setDate(fire.getDate() + 1);
+  var allowed = repeatDays(repeat, days);
+  if (allowed) {
+    var guard = 0;
+    while (allowed.indexOf(fire.getDay()) === -1 && guard++ < 14) fire.setDate(fire.getDate() + 1);
+  }
+  return fire.getTime();
+}
 
 // ── Notification permission ───────────────────────────────────────────────
 function isIOS() {
@@ -255,10 +386,10 @@ function refreshNotifPerm() {
   if (now !== APP.notifPerm) {
     APP.notifPerm = now;
     APP.notifMsg = now === 'granted' ? 'Notifikacije su dozvoljene ✓' : '';
+    if (now === 'granted') subscribeToPush();
     render();
   }
 }
-document.addEventListener('visibilitychange', function(){ if (!document.hidden) refreshNotifPerm(); });
 window.addEventListener('focus', refreshNotifPerm);
 
 function markNotifAsked() { APP.notifAsked = true; lsSet('notif_asked', true); }
@@ -296,11 +427,18 @@ function subscribeToPush() {
     });
   }).catch(function(e) { console.warn('Push subscribe failed:', e); });
 }
-function syncScheduleToServer(id, title, note, fireAt, repeat) {
+function localTimezone() {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) { return ''; }
+}
+function syncScheduleToServer(id, title, note, fireAt, repeat, days, time) {
   if (!PUSH_SERVER_URL) return;
   fetch(PUSH_SERVER_URL + '/api/schedule', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ deviceId: getDeviceId(), id: id, title: title, note: note, fireAt: fireAt, repeat: repeat || 'once' })
+    body: JSON.stringify({ deviceId: getDeviceId(), id: id, title: title, note: note, fireAt: fireAt,
+                           repeat: repeat || 'once', days: days || null,
+                           // time + zone let the server recompute repeats in the user's
+                           // local clock instead of UTC — see worker/src/index.js
+                           time: time || null, tz: localTimezone() })
   }).catch(function(){});
 }
 function syncCancelToServer(id) {
@@ -372,7 +510,9 @@ window.addEventListener('appinstalled', function() {
 // Message listener at top level — never misses messages regardless of timing
 if (navigator.serviceWorker) {
   navigator.serviceWorker.addEventListener('message', function(e) {
-    if (e.data && e.data.type === 'ALARM') triggerAlarm(e.data);
+    if (!e.data) return;
+    if (e.data.type === 'ALARM') triggerAlarm(e.data);
+    if (e.data.type === 'SNOOZED') toast('Odgođeno ' + e.data.minutes + ' min');
   });
 }
 function applySWUpdate() { location.reload(); }
@@ -390,6 +530,12 @@ function initSW() {
   navigator.serviceWorker.register('sw.js').then(function(reg) {
     APP.swReg = reg;
     reg.update().catch(function(){}); // force an immediate check, don't wait for the browser's own timer
+    // One extra chance for the OS to wake the worker and notice a missed
+    // alarm without the app being opened. Unsupported almost everywhere
+    // except Chrome/Android installed PWAs — hence the bare catch.
+    if (reg.periodicSync) {
+      reg.periodicSync.register('alarm-check', { minInterval: 15 * 60 * 1000 }).catch(function(){});
+    }
   }).catch(function(e) { console.warn('SW:', e); });
 }
 function swPost(data) {
@@ -397,41 +543,54 @@ function swPost(data) {
   if (c) c.postMessage(data);
   else if (APP.swReg && APP.swReg.active) APP.swReg.active.postMessage(data);
 }
+
 // announce=true shows an immediate "added" notification in the tray — only
 // pass it from the user's own Add action, never from the bulk re-schedule on
 // app load/dismiss, or every existing reminder would re-fire it on refresh.
 function scheduleRem(r, announce) {
-  var now = new Date(), fire = new Date();
-  var p = r.time.split(':');
-  fire.setHours(+p[0], +p[1], 0, 0);
-  if (fire <= now) fire.setDate(fire.getDate() + 1);
-  // "radni dani" must skip Sat/Sun — otherwise the SW timer fires on weekends
-  if (r.repeat === 'weekdays') {
-    var guard = 0;
-    while ((fire.getDay() === 0 || fire.getDay() === 6) && guard++ < 7) fire.setDate(fire.getDate() + 1);
+  var fireAt = r.nextFire;
+  var now = Date.now();
+  // Keep a fire time that's already past but still inside the catch-up window
+  // so the fallback loop below can ring it late instead of losing it.
+  if (!fireAt || (fireAt <= now && now - fireAt > MISSED_WINDOW_MS)) {
+    fireAt = computeNextFire(r.time, r.repeat, r.days, now);
+    persistNextFire(r.id, fireAt);
   }
-  var msg = { type: 'SCHEDULE', id: r.id, title: r.title, note: r.note, time: r.time, fireAt: fire.getTime() };
-  if (announce) msg.confirmLabel = r.title + ' — ' + fmtTime(r.time) + ' · ' + rl(r.repeat);
+  var msg = { type:'SCHEDULE', id:r.id, title:r.title, note:r.note, time:r.time,
+              fireAt:fireAt, repeat:r.repeat, days:r.days || null,
+              snooze:getSettings().snooze };
+  if (announce) msg.confirmLabel = r.title + ' — ' + fmtTime(r.time) + ' · ' + rl(r.repeat, r.days);
   swPost(msg);
-  syncScheduleToServer(r.id, r.title, r.note, fire.getTime(), r.repeat);
+  syncScheduleToServer(r.id, r.title, r.note, fireAt, r.repeat, r.days, r.time);
+}
+function persistNextFire(id, fireAt) {
+  saveRems(getRems().map(function(x){ return x.id == id ? Object.assign({}, x, { nextFire: fireAt }) : x; }));
 }
 function cancelRem(id) {
-  swPost({ type: 'CANCEL', id: id });
-  try { localStorage.removeItem('lf_' + id); } catch(e) {} // drop the fallback-fired marker
+  swPost({ type:'CANCEL', id:id });
+  lsDel('lf_' + id);   // drop the "already handled" marker
   syncCancelToServer(id);
 }
 function scheduleEvent(ev, announce) {
   if (!ev.time) return; // no time set → note only, no alarm
-  var p = ev.time.split(':'), d = ev.date.split('-').map(Number);
-  var fire = new Date(d[0], d[1]-1, d[2], +p[0], +p[1], 0, 0);
-  if (fire <= new Date()) return; // don't schedule past events
-  var msg = { type: 'SCHEDULE', id: ev.id, title: ev.title, note: ev.note, time: ev.time, fireAt: fire.getTime() };
+  var fireAt = eventFireAt(ev);
+  if (fireAt === null) return;
+  if (Date.now() - fireAt > MISSED_WINDOW_MS) return; // long past, don't resurrect
+  var msg = { type:'SCHEDULE', id:ev.id, title:ev.title, note:ev.note, time:ev.time,
+              fireAt:fireAt, repeat:'once', days:null,
+              snooze:getSettings().snooze };
   if (announce) msg.confirmLabel = ev.title + ' — ' + fmtDateLabel(ev.date) + ' u ' + fmtTime(ev.time);
   swPost(msg);
-  syncScheduleToServer(ev.id, ev.title, ev.note, fire.getTime(), 'once');
+  syncScheduleToServer(ev.id, ev.title, ev.note, fireAt, 'once', null, ev.time);
+}
+function eventFireAt(ev) {
+  if (!ev.time || !ev.date) return null;
+  var p = ev.time.split(':'), d = ev.date.split('-').map(Number);
+  if (d.length !== 3) return null;
+  return new Date(d[0], d[1]-1, d[2], +p[0], +p[1], 0, 0).getTime();
 }
 
-// ── Audio ─────────────────────────────────────────────────────────────────
+// ── Audio + haptics ───────────────────────────────────────────────────────
 var audioCtx = null, alarmTimer = null;
 function playBeep() {
   try {
@@ -449,72 +608,141 @@ function playBeep() {
       o.start(t + i*.18); o.stop(t + i*.18 + .22);
     });
   } catch(e) {}
+  try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch(e) {}
 }
 function startAlarm() {
   stopAlarm(); // guard: a second alarm must not orphan the previous interval
   playBeep();
   alarmTimer = setInterval(playBeep, 1400);
 }
-function stopAlarm() { if (alarmTimer) { clearInterval(alarmTimer); alarmTimer = null; } }
+function stopAlarm() {
+  if (alarmTimer) { clearInterval(alarmTimer); alarmTimer = null; }
+  try { if (navigator.vibrate) navigator.vibrate(0); } catch(e) {}
+}
 
 // ── Alarm trigger ─────────────────────────────────────────────────────────
+// One shared "this id already went off" marker for both paths that can ring an
+// alarm (the service worker's timer and the in-page fallback loop below), so
+// whichever gets there first wins and the other backs off.
+function markHandled(id) { lsSet('lf_' + id, Date.now()); }
+function handledRecently(id) { return Date.now() - (lsGet('lf_' + id, 0) || 0) < 60000; }
+
+// Moves a reminder/event past the occurrence that just fired: 'once' items are
+// done, repeating ones get their next slot computed the same way the SW does.
+function advanceOnFire(id) {
+  var rems = getRems(), hit = false;
+  var updated = rems.map(function(r) {
+    if (r.id != id) return r;
+    hit = true;
+    if (r.repeat === 'once') return Object.assign({}, r, { fired:true, nextFire:null });
+    return Object.assign({}, r, { nextFire: computeNextFire(r.time, r.repeat, r.days, Date.now()) });
+  });
+  if (hit) { saveRems(updated); return; }
+  var evs = getEvents();
+  var hitEv = false;
+  var updatedEvs = evs.map(function(e) {
+    if (e.id != id) return e;
+    hitEv = true;
+    return Object.assign({}, e, { fired:true });
+  });
+  if (hitEv) saveEvents(updatedEvs);
+}
+
 function triggerAlarm(data) {
+  if (handledRecently(data.id)) return;
+  markHandled(data.id);
+
   var rems = getRems(), r = rems.filter(function(x){ return x.id == data.id; })[0];
   var evs = getEvents(), ev = evs.filter(function(x){ return x.id == data.id; })[0];
-  var alarmData = { id: data.id, title: data.title || (r&&r.title) || (ev&&ev.title) || 'Podsjetnik', note: data.note || (r&&r.note) || (ev&&ev.note) || '', late: !!data.late };
-  if (r && r.repeat === 'once') saveRems(rems.map(function(x){ return x.id==data.id ? Object.assign({},x,{fired:true}) : x; }));
-  if (ev) saveEvents(evs.map(function(x){ return x.id==data.id ? Object.assign({},x,{fired:true}) : x; }));
-  if (document.hidden) {
-    // App is in the background — don't hijack the screen out of nowhere.
-    // The OS notification (🔔) is already showing; the full-screen PIN
-    // prompt appears once the user actually brings the app forward
-    // (tapping the notification, or switching back to it manually).
-    APP.pendingAlarm = alarmData;
-    return;
-  }
-  APP.alarm = alarmData;
+  advanceOnFire(data.id);
+
+  enqueueAlarm({
+    id: data.id,
+    title: data.title || (r && r.title) || (ev && ev.title) || 'Podsjetnik',
+    note: data.note || (r && r.note) || (ev && ev.note) || '',
+    late: !!data.late
+  });
+}
+
+function enqueueAlarm(a) {
+  if (APP.alarm && APP.alarm.id == a.id) return;
+  if (APP.alarmQueue.some(function(x){ return x.id == a.id; })) return;
+  APP.alarmQueue.push(a);
+  // With one already on screen the new one just waits, but the "N still
+  // waiting" line has to repaint or it silently under-reports the queue.
+  if (APP.alarm) render();
+  else presentAlarm();
+}
+// Two reasons not to show an alarm right now: the app is backgrounded (the OS
+// notification is already up — hijacking the screen the moment the user opens
+// something else is worse than waiting), or another alarm is on screen. Both
+// just leave it queued.
+function presentAlarm() {
+  if (document.hidden || APP.alarm || !APP.alarmQueue.length) return;
+  APP.alarm = APP.alarmQueue.shift();
   startAlarm();
   render();
 }
+function finishAlarm() {
+  stopAlarm();
+  APP.alarm = null;
+  APP.pinInput = '';
+  APP.perr = '';
+  presentAlarm();
+  if (!APP.alarm) render();
+}
+
 document.addEventListener('visibilitychange', function(){
-  if (!document.hidden && APP.pendingAlarm && !APP.alarm) {
-    APP.alarm = APP.pendingAlarm;
-    APP.pendingAlarm = null;
-    startAlarm();
-    render();
-  }
+  if (document.hidden) return;
+  refreshNotifPerm();
+  swPost({ type:'SYNC' });   // let the SW catch up on anything the OS slept through
+  presentAlarm();
 });
 
-// ── Page check (fallback) ─────────────────────────────────────────────────
+// ── Page fallback loop ────────────────────────────────────────────────────
+// Last line of defence: if the service worker was killed and its timer never
+// ran, an open page still notices the moment it passes nextFire.
 setInterval(function() {
-  var now = new Date();
-  var key = pad(now.getHours()) + ':' + pad(now.getMinutes());
-  var wd = now.getDay();
+  var now = Date.now();
   getRems().forEach(function(r) {
-    if (r.fired || r.time !== key) return;
-    var ok = r.repeat==='once' || r.repeat==='daily' || (r.repeat==='weekdays' && wd>=1 && wd<=5);
-    if (!ok) return;
-    var fk = 'lf_'+r.id, td = now.toDateString()+key;
-    if (lsGet(fk,'') === td) return;
-    lsSet(fk, td);
-    triggerAlarm({ id: r.id, title: r.title, note: r.note||'' });
+    if (r.fired || !r.nextFire || now < r.nextFire) return;
+    if (now - r.nextFire > MISSED_WINDOW_MS) { advanceOnFire(r.id); return; }
+    triggerAlarm({ id:r.id, title:r.title, note:r.note || '', late: now - r.nextFire > 90000 });
   });
-  var today = dkey(now.getFullYear(), now.getMonth(), now.getDate());
   getEvents().forEach(function(ev) {
-    if (ev.fired || !ev.time || ev.time !== key || ev.date !== today) return;
-    var fk = 'lf_'+ev.id, td = now.toDateString()+key;
-    if (lsGet(fk,'') === td) return;
-    lsSet(fk, td);
-    triggerAlarm({ id: ev.id, title: ev.title, note: ev.note||'' });
+    if (ev.fired || !ev.time) return;
+    var at = eventFireAt(ev);
+    if (at === null || now < at || now - at > MISSED_WINDOW_MS) return;
+    triggerAlarm({ id:ev.id, title:ev.title, note:ev.note || '', late: now - at > 90000 });
   });
 }, 15000);
 
-// ── DOM helpers ───────────────────────────────────────────────────────────
+// ── Formatting helpers ────────────────────────────────────────────────────
 function pad(n) { return String(n).padStart(2,'0'); }
 function fmtTime(t) { var p=t.split(':'); return pad(p[0])+':'+p[1]; }
-function rl(r) { return r==='once'?'jednom':r==='daily'?'svaki dan':'radni dani'; }
+var DAY_SHORT = ['Ned','Pon','Uto','Sri','Čet','Pet','Sub'];
+function rl(repeat, days) {
+  if (repeat === 'once') return 'jednom';
+  if (repeat === 'daily') return 'svaki dan';
+  if (repeat === 'weekdays') return 'radni dani';
+  if (repeat === 'custom') {
+    var d = (days || []).slice().sort(function(a,b){ return ((a+6)%7) - ((b+6)%7); });
+    return d.length ? d.map(function(x){ return DAY_SHORT[x]; }).join(', ') : 'nijedan dan';
+  }
+  return repeat;
+}
+// "za 3 h 20 min" reads better than a bare timestamp for the next occurrence.
+function fmtCountdown(ms) {
+  if (ms <= 0) return 'sada';
+  var mins = Math.round(ms / 60000);
+  if (mins < 60) return 'za ' + mins + ' min';
+  var hrs = Math.floor(mins / 60), rem = mins % 60;
+  if (hrs < 24) return 'za ' + hrs + ' h' + (rem ? ' ' + rem + ' min' : '');
+  var days = Math.floor(hrs / 24);
+  return 'za ' + days + (days === 1 ? ' dan' : ' dana');
+}
 
-// ── Date helpers (calendar) ─────────────────────────────────────────────────
+// ── Date helpers (calendar) ───────────────────────────────────────────────
 var MONTHS = ['Januar','Februar','Mart','April','Maj','Juni','Juli','August','Septembar','Oktobar','Novembar','Decembar'];
 var DOWS = ['Pon','Uto','Sri','Čet','Pet','Sub','Ned'];
 function dkey(y,m,d) { return y+'-'+pad(m+1)+'-'+pad(d); }
@@ -524,6 +752,7 @@ function fmtDateLabel(k) {
   return p[2] + '. ' + MONTHS[p[1]-1].toLowerCase() + ' ' + p[0] + '.';
 }
 
+// ── DOM helpers ───────────────────────────────────────────────────────────
 function mk(tag, attrs, children) {
   var el = document.createElement(tag);
   if (attrs) {
@@ -547,7 +776,6 @@ function mk(tag, attrs, children) {
   }
   return el;
 }
-function txt(s) { return document.createTextNode(s); }
 function svgEl(path, size, col) {
   var s = document.createElementNS('http://www.w3.org/2000/svg','svg');
   s.setAttribute('width', size||20); s.setAttribute('height', size||20);
@@ -555,6 +783,28 @@ function svgEl(path, size, col) {
   s.setAttribute('stroke', col||'currentColor'); s.setAttribute('stroke-width','2');
   s.setAttribute('stroke-linecap','round'); s.setAttribute('stroke-linejoin','round');
   s.innerHTML = path; return s;
+}
+function label(t) { var l = mk('label'); l.textContent = t; return l; }
+function textEl(tag, cls, t, style) {
+  var e = mk(tag, { class: cls || null, style: style || null });
+  e.textContent = t;
+  return e;
+}
+function sel(val, opts) {
+  var s = mk('select', { class:'inp' });
+  opts.forEach(function(o) {
+    var opt = document.createElement('option');
+    opt.value = o[0]; opt.textContent = o[1];
+    if (o[0] === val) opt.selected = true;
+    s.appendChild(opt);
+  });
+  return s;
+}
+function emptyState(icon, msg) {
+  var e = mk('div',{class:'empty'});
+  e.appendChild(textEl('div','empty-icon', icon));
+  e.appendChild(textEl('p', null, msg));
+  return e;
 }
 
 // Version badge — shown in every header so it's obvious at a glance which
@@ -568,41 +818,33 @@ function versionBadge() {
   }
   return b;
 }
-
-// Fix for select value (must set after appending to DOM or set selectedIndex)
-function sel(val, opts) {
-  var s = document.createElement('select');
-  s.style.width='100%'; s.style.padding='11px 13px'; s.style.background='#eef0f4';
-  s.style.border='1px solid #dcdce4'; s.style.borderRadius='8px';
-  s.style.color='#1c1c22'; s.style.fontSize='15px'; s.style.outline='none';
-  s.style.WebkitAppearance='none'; s.style.appearance='none';
-  opts.forEach(function(o) {
-    var opt = document.createElement('option');
-    opt.value = o[0]; opt.textContent = o[1];
-    if (o[0] === val) opt.selected = true;
-    s.appendChild(opt);
-  });
-  return s;
+function appHeader(iconPath, sub) {
+  var hdr = mk('div',{class:'header'});
+  var ico = mk('div',{class:'header-icon'});
+  ico.appendChild(svgEl(iconPath, 18, 'var(--accent-ink)'));
+  hdr.appendChild(ico);
+  var htxt = mk('div');
+  htxt.appendChild(textEl('div','header-title','PIN Podsjetnik'));
+  htxt.appendChild(textEl('div','header-sub', sub));
+  hdr.appendChild(htxt);
+  hdr.appendChild(versionBadge());
+  return hdr;
 }
 
-// ── PIN pad view ──────────────────────────────────────────────────────────
+// ── PIN pad ───────────────────────────────────────────────────────────────
 function renderPinDots(filled, total) {
   total = total || 6;
   var wrap = mk('div',{class:'pin-dots'});
-  for (var i=0;i<total;i++) {
-    wrap.appendChild(mk('div',{class:'dot'+(i<filled?' on':'')}));
-  }
+  for (var i=0;i<total;i++) wrap.appendChild(mk('div',{class:'dot'+(i<filled?' on':'')}));
   return wrap;
 }
-
 function renderPinPad(onDigit, onDel) {
   var keys = ['1','2','3','4','5','6','7','8','9','','0','DEL'];
   var pad = mk('div',{class:'pin-pad'});
   keys.forEach(function(k) {
     if (k==='') { pad.appendChild(mk('div',{class:'pkey pkey-empty'})); return; }
-    var label = k==='DEL'?'⌫':k;
     var btn = mk('button',{class:'pkey'+(k==='DEL'?' pkey-del':'')});
-    btn.textContent = label;
+    btn.textContent = k==='DEL'?'⌫':k;
     btn.addEventListener('click', function(){ k==='DEL'?onDel():onDigit(k); });
     pad.appendChild(btn);
   });
@@ -631,37 +873,27 @@ function renderSetup() {
       APP.setupStep = 'confirm'; APP.serr = ''; render();
     } else {
       if (APP.sc !== APP.sp) { APP.sc=''; APP.serr='PIN-ovi se ne podudaraju!'; render(); }
-      else { lsSet('app_pin', APP.sp); APP.pin=APP.sp; APP.sp=''; APP.sc=''; APP.setupStep='set'; APP.serr=''; APP.view='main'; render(); }
+      else {
+        lsSet('app_pin', APP.sp); APP.pin=APP.sp;
+        APP.sp=''; APP.sc=''; APP.setupStep='set'; APP.serr=''; APP.view='main';
+        toast('PIN sačuvan ✓');
+        render();
+      }
     }
   }
 
   var wrap = mk('div',{class:'page-center'});
   var inner = mk('div',{style:'width:100%;max-width:310px'});
+  inner.appendChild(appHeader('<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    (APP.view==='setup' && APP.pin) ? 'PROMJENA PIN-A' : 'POSTAVLJANJE PIN-A'));
 
-  // Header
-  var hdr = mk('div',{class:'header'});
-  var ico = mk('div',{class:'header-icon'});
-  ico.appendChild(svgEl('<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',18,'#fff'));
-  hdr.appendChild(ico);
-  var htxt = mk('div');
-  var ht1 = mk('div',{class:'header-title'}); ht1.textContent='PIN Podsjetnik'; htxt.appendChild(ht1);
-  var ht2 = mk('div',{class:'header-sub'}); ht2.textContent=APP.view==='setup'&&APP.pin?'PROMJENA PIN-A':'POSTAVLJANJE PIN-A'; htxt.appendChild(ht2);
-  hdr.appendChild(htxt);
-  hdr.appendChild(versionBadge());
-  inner.appendChild(hdr);
-
-  var h1 = mk('div',{style:'font-size:24px;font-weight:800;margin-bottom:8px'});
-  h1.textContent = isC ? 'Potvrdi PIN' : 'Postavi PIN';
-  inner.appendChild(h1);
-
-  var sub = mk('div',{style:'font-size:14px;color:#6e6e77;margin-bottom:30px;line-height:1.65'});
-  sub.textContent = isC ? 'Ponovi isti PIN za potvrdu.' : 'Ovaj PIN koristit ćeš za gašenje alarma. Min 4, max 6 brojeva.';
-  inner.appendChild(sub);
+  inner.appendChild(textEl('div',null, isC ? 'Potvrdi PIN' : 'Postavi PIN', 'font-size:24px;font-weight:800;margin-bottom:8px'));
+  inner.appendChild(textEl('div',null,
+    isC ? 'Ponovi isti PIN za potvrdu.' : 'Ovaj PIN koristit ćeš za gašenje alarma. Min 4, max 6 brojeva.',
+    'font-size:14px;color:var(--text-dim);margin-bottom:30px;line-height:1.65'));
 
   inner.appendChild(renderPinDots(cur.length));
-
-  var errEl = mk('div',{class:'err'}); errEl.textContent = APP.serr || '\u00a0'; inner.appendChild(errEl);
-
+  inner.appendChild(textEl('div','err', APP.serr || ' '));
   inner.appendChild(renderPinPad(onDigit, onDel));
 
   var btnWrap = mk('div',{style:'margin-top:18px'});
@@ -673,7 +905,7 @@ function renderSetup() {
   if (APP.pin && APP.view === 'setup') {
     var cancel = mk('button',{class:'btn-ghost'});
     cancel.textContent = 'Odustani';
-    cancel.addEventListener('click', function(){ APP.view='main'; render(); });
+    cancel.addEventListener('click', function(){ APP.view='main'; APP.sp=''; APP.sc=''; APP.serr=''; render(); });
     btnWrap.appendChild(cancel);
   }
   inner.appendChild(btnWrap);
@@ -684,46 +916,45 @@ function renderSetup() {
 // ── Alarm view ────────────────────────────────────────────────────────────
 function renderAlarm() {
   var now = new Date();
-  var ts = pad(now.getHours())+':'+pad(now.getMinutes());
   var a = APP.alarm;
 
   function onDigit(d) { if(APP.pinInput.length<6){ APP.pinInput+=d; APP.perr=''; render(); } }
   function onDel() { APP.pinInput=APP.pinInput.slice(0,-1); APP.perr=''; render(); }
   function tryDismiss() {
     if (APP.pinInput === APP.pin) {
-      stopAlarm();
-      // Close the persistent notification
-      swPost({ type: 'DISMISS', id: APP.alarm.id });
-      // Reschedule repeating reminders for next occurrence
-      var dismissed = APP.alarm.id;
-      var rems = getRems();
-      var rem = rems.filter(function(x){ return x.id == dismissed; })[0];
-      if (rem && rem.repeat !== 'once' && !rem.fired) scheduleRem(rem);
-      APP.alarm=null; APP.pinInput=''; APP.perr=''; APP.view='main'; render();
+      swPost({ type:'DISMISS', id:a.id });
+      finishAlarm();
     } else {
       APP.pinInput=''; APP.perr='Pogrešan PIN!'; render();
+      try { if (navigator.vibrate) navigator.vibrate(200); } catch(e) {}
       var p = document.querySelector('.pin-pad');
       if(p){ p.style.animation='shake .4s ease'; setTimeout(function(){p.style.animation='';},500); }
     }
   }
+  function doSnooze() {
+    var mins = getSettings().snooze;
+    swPost({ type:'SNOOZE', id:a.id, minutes:mins });
+    lsDel('lf_' + a.id);   // it will legitimately ring again — clear the guard
+    finishAlarm();
+    toast('Odgođeno ' + mins + ' min');
+  }
 
   var page = mk('div',{class:'alarm-page'});
   var ring = mk('div',{class:'alarm-ring'});
-  ring.appendChild(svgEl('<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',36,'#e24b4a'));
+  ring.appendChild(svgEl('<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',36,'var(--accent)'));
   page.appendChild(ring);
 
-  var tsEl = mk('div',{style:'font-size:13px;color:#e24b4a;letter-spacing:2px;margin-bottom:10px'}); tsEl.textContent=ts; page.appendChild(tsEl);
+  page.appendChild(textEl('div',null, pad(now.getHours())+':'+pad(now.getMinutes()),
+    'font-size:13px;color:var(--accent);letter-spacing:2px;margin-bottom:10px'));
   if (a.late) {
-    var lateEl = mk('div',{style:'font-size:11px;font-weight:700;color:#e24b4a;background:rgba(226,75,74,.1);border:1px solid rgba(226,75,74,.35);border-radius:20px;padding:5px 12px;margin-bottom:14px'});
-    lateEl.textContent = '⏰ Zakasnio alarm — sistem je ugasio app u pozadini pa nije zazvonio na vrijeme';
-    page.appendChild(lateEl);
+    page.appendChild(textEl('div','alarm-badge','⏰ Zakasnio alarm — sistem je ugasio app u pozadini pa nije zazvonio na vrijeme'));
   }
-  var titleEl = mk('div',{style:'font-size:26px;font-weight:800;text-align:center;margin-bottom:8px'}); titleEl.textContent=a.title; page.appendChild(titleEl);
-  if(a.note){ var noteEl=mk('div',{style:'font-size:14px;color:#6e6e77;text-align:center;margin-bottom:28px;line-height:1.5'}); noteEl.textContent=a.note; page.appendChild(noteEl); }
+  page.appendChild(textEl('div',null,a.title,'font-size:26px;font-weight:800;text-align:center;margin-bottom:8px'));
+  if (a.note) page.appendChild(textEl('div',null,a.note,'font-size:14px;color:var(--text-dim);text-align:center;margin-bottom:28px;line-height:1.5'));
 
-  var lbl = mk('div',{style:'font-size:13px;color:#6e6e77;margin-bottom:22px'}); lbl.textContent='Unesi PIN za gašenje alarma'; page.appendChild(lbl);
+  page.appendChild(textEl('div',null,'Unesi PIN za gašenje alarma','font-size:13px;color:var(--text-dim);margin-bottom:22px'));
   page.appendChild(renderPinDots(APP.pinInput.length));
-  var errEl = mk('div',{class:'err'}); errEl.textContent=APP.perr||'\u00a0'; page.appendChild(errEl);
+  page.appendChild(textEl('div','err', APP.perr || ' '));
   page.appendChild(renderPinPad(onDigit, onDel));
 
   var btnWrap = mk('div',{style:'margin-top:18px;width:100%;max-width:290px'});
@@ -731,8 +962,653 @@ function renderAlarm() {
   btn.textContent='Potvrdi PIN';
   btn.addEventListener('click', tryDismiss);
   btnWrap.appendChild(btn);
+
+  // Snooze doesn't weaken the PIN lock — it postpones the same alarm, it can't
+  // silence it. Without the PIN there is still no way to make it stop for good.
+  var snz = mk('button',{class:'btn-ghost'});
+  snz.textContent = 'Odgodi ' + getSettings().snooze + ' min';
+  snz.addEventListener('click', doSnooze);
+  btnWrap.appendChild(snz);
   page.appendChild(btnWrap);
+
+  if (APP.alarmQueue.length) {
+    page.appendChild(textEl('div','alarm-queue','Još ' + APP.alarmQueue.length + ' alarm(a) čeka'));
+  }
   return page;
+}
+
+// ── Add / edit tab ────────────────────────────────────────────────────────
+function renderAddTab(page) {
+  var editing = APP.editId !== null;
+  var card = mk('div',{class:'card'});
+  card.appendChild(textEl('div','card-title', editing ? 'Uredi podsjetnik' : 'Novi podsjetnik'));
+
+  function valid() { return !!APP.addTitle.trim() && !!APP.addTime &&
+    (APP.addRepeat !== 'custom' || APP.addDays.length > 0); }
+  function sync() { addBtn.disabled = !valid(); }
+
+  var f1 = mk('div',{class:'field'});
+  f1.appendChild(label('Naziv *'));
+  var inp1 = mk('input',{type:'text',placeholder:'npr. Popij lijek, Sastanak...'});
+  inp1.value = APP.addTitle;
+  inp1.addEventListener('input', function(){ APP.addTitle=this.value; sync(); });
+  f1.appendChild(inp1); card.appendChild(f1);
+
+  var f2 = mk('div',{class:'field'});
+  f2.appendChild(label('Napomena'));
+  var inp2 = mk('input',{type:'text',placeholder:'Detalji...'});
+  inp2.value = APP.addNote;
+  inp2.addEventListener('input', function(){ APP.addNote=this.value; });
+  f2.appendChild(inp2); card.appendChild(f2);
+
+  var row = mk('div',{class:'row2'});
+  var f3 = mk('div',{class:'field'});
+  f3.appendChild(label('Vrijeme *'));
+  var inp3 = mk('input',{type:'time'}); inp3.value = APP.addTime;
+  inp3.addEventListener('input', function(){ APP.addTime=this.value; sync(); });
+  f3.appendChild(inp3); row.appendChild(f3);
+
+  var f4 = mk('div',{class:'field'});
+  f4.appendChild(label('Ponavljanje'));
+  var selEl = sel(APP.addRepeat, [['once','Jednom'],['daily','Svaki dan'],['weekdays','Radni dani'],['custom','Odaberi dane']]);
+  selEl.addEventListener('change', function(){ APP.addRepeat=this.value; render(); });
+  f4.appendChild(selEl); row.appendChild(f4);
+  card.appendChild(row);
+
+  if (APP.addRepeat === 'custom') {
+    var dp = mk('div',{class:'daypick'});
+    [['Pon',1],['Uto',2],['Sri',3],['Čet',4],['Pet',5],['Sub',6],['Ned',0]].forEach(function(p){
+      var b = mk('button',{class:'daypick-btn'+(APP.addDays.indexOf(p[1])!==-1?' on':''),type:'button'});
+      b.textContent = p[0];
+      // Mutates APP.addDays and repaints only this button — a full render()
+      // here would tear down the title/note inputs mid-typing.
+      b.addEventListener('click', function(){
+        var i = APP.addDays.indexOf(p[1]);
+        if (i === -1) APP.addDays.push(p[1]); else APP.addDays.splice(i,1);
+        b.className = 'daypick-btn'+(APP.addDays.indexOf(p[1])!==-1?' on':'');
+        sync();
+      });
+      dp.appendChild(b);
+    });
+    card.appendChild(dp);
+  }
+
+  var addBtn = mk('button',{class:'btn-red'});
+  addBtn.textContent = editing ? 'Sačuvaj izmjene' : 'Postavi podsjetnik';
+  addBtn.disabled = !valid();
+  addBtn.addEventListener('click', function(){
+    if (!valid()) return;
+    var days = APP.addRepeat === 'custom' ? APP.addDays.slice() : null;
+    if (editing) {
+      var existing = getRems().filter(function(x){ return x.id == APP.editId; })[0];
+      if (!existing) { resetAddForm(); render(); return; }
+      cancelRem(existing.id);
+      var upd = Object.assign({}, existing, {
+        title: APP.addTitle.trim(), note: APP.addNote.trim(), time: APP.addTime,
+        repeat: APP.addRepeat, days: days, fired: false,
+        nextFire: computeNextFire(APP.addTime, APP.addRepeat, days, Date.now())
+      });
+      saveRems(getRems().map(function(x){ return x.id == upd.id ? upd : x; }));
+      scheduleRem(upd);
+      toast('Izmjene sačuvane ✓');
+    } else {
+      var r = {
+        id: Date.now(), title: APP.addTitle.trim(), note: APP.addNote.trim(),
+        time: APP.addTime, repeat: APP.addRepeat, days: days, fired: false,
+        nextFire: computeNextFire(APP.addTime, APP.addRepeat, days, Date.now())
+      };
+      saveRems(getRems().concat([r]));
+      scheduleRem(r, true);
+      toast('Podsjetnik postavljen ✓');
+    }
+    resetAddForm();
+    APP.tab = 'list';
+    render();
+  });
+  card.appendChild(addBtn);
+
+  if (editing) {
+    var cancelBtn = mk('button',{class:'btn-ghost'});
+    cancelBtn.textContent = 'Odustani';
+    cancelBtn.addEventListener('click', function(){ resetAddForm(); APP.tab='list'; render(); });
+    card.appendChild(cancelBtn);
+  }
+  page.appendChild(card);
+
+  if (!editing && APP.addTime && valid()) {
+    var preview = computeNextFire(APP.addTime, APP.addRepeat, APP.addRepeat==='custom'?APP.addDays:null, Date.now());
+    page.appendChild(textEl('div',null,'Prvi put zvoni ' + fmtCountdown(preview - Date.now()) + '.',
+      'font-size:12px;color:var(--text-faint);text-align:center;padding:2px 0 8px'));
+  }
+}
+function resetAddForm() {
+  APP.addTitle=''; APP.addNote=''; APP.addTime=''; APP.addRepeat='daily';
+  APP.addDays=[1,2,3,4,5]; APP.editId=null;
+}
+function startEditRem(r) {
+  APP.editId = r.id;
+  APP.addTitle = r.title; APP.addNote = r.note || ''; APP.addTime = r.time;
+  APP.addRepeat = r.repeat; APP.addDays = (r.days && r.days.length) ? r.days.slice() : [1,2,3,4,5];
+  APP.tab = 'add';
+  render();
+}
+
+// ── List tab ──────────────────────────────────────────────────────────────
+function renderListTab(page) {
+  var rems = getRems();
+  if (rems.length === 0) {
+    page.appendChild(emptyState('○','Nema podsjetnika. Dodaj ih u tabu Dodaj.'));
+    return;
+  }
+
+  if (rems.length > 4) {
+    var searchWrap = mk('div',{style:'margin-bottom:12px'});
+    var s = mk('input',{class:'inp',type:'search',placeholder:'Traži podsjetnik...'});
+    s.value = APP.listQuery;
+    // Filters in place instead of re-rendering, so the keyboard and caret stay put.
+    s.addEventListener('input', function(){
+      APP.listQuery = this.value;
+      var q = this.value.trim().toLowerCase();
+      Array.prototype.forEach.call(page.querySelectorAll('[data-search]'), function(el){
+        el.style.display = (!q || el.getAttribute('data-search').indexOf(q) !== -1) ? '' : 'none';
+      });
+    });
+    searchWrap.appendChild(s);
+    page.appendChild(searchWrap);
+  }
+
+  var active = rems.filter(function(r){ return !r.fired; });
+  var done = rems.filter(function(r){ return r.fired; });
+  var now = Date.now();
+
+  function row(r) {
+    var ri = mk('div',{class:'ri','data-search':(r.title+' '+(r.note||'')).toLowerCase()});
+    var tap = mk('div',{class:'ri-tap'});
+    tap.appendChild(mk('div',{class:'ri-dot'+(r.fired?' done':'')}));
+    var rb = mk('div',{class:'ri-body'});
+    rb.appendChild(textEl('div','ri-name'+(r.fired?' done':''), r.title));
+    rb.appendChild(textEl('div','ri-meta', fmtTime(r.time)+' · '+rl(r.repeat, r.days)+(r.fired?' · ✓ odzvonio':'')));
+    if (r.note) rb.appendChild(textEl('div','ri-note', r.note));
+    if (!r.fired && r.nextFire) rb.appendChild(textEl('div','ri-next','Zvoni ' + fmtCountdown(r.nextFire - now)));
+    tap.appendChild(rb);
+    tap.addEventListener('click', function(){ startEditRem(r); });
+    ri.appendChild(tap);
+
+    var del = mk('button',{class:'ri-del'}); del.textContent='×';
+    del.addEventListener('click', function(){
+      cancelRem(r.id);
+      saveRems(getRems().filter(function(x){ return x.id !== r.id; }));
+      toast('Obrisano');
+      render();
+    });
+    ri.appendChild(del);
+    return ri;
+  }
+
+  active.slice().sort(function(a,b){ return (a.nextFire||0) - (b.nextFire||0); }).forEach(function(r){ page.appendChild(row(r)); });
+
+  if (done.length) {
+    var head = mk('div',{style:'display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px'});
+    head.appendChild(textEl('div','cal-events-title','Odzvonili', 'margin:0'));
+    var clr = mk('button',{style:'font-size:12px;color:var(--accent);font-weight:700;background:none;border:none;cursor:pointer'});
+    clr.textContent = 'Očisti (' + done.length + ')';
+    clr.addEventListener('click', function(){
+      done.forEach(function(r){ cancelRem(r.id); });
+      saveRems(getRems().filter(function(x){ return !x.fired; }));
+      toast('Očišćeno');
+      render();
+    });
+    head.appendChild(clr);
+    page.appendChild(head);
+    done.forEach(function(r){ page.appendChild(row(r)); });
+  }
+}
+
+// ── Notes tab ─────────────────────────────────────────────────────────────
+function renderNotesTab(page) {
+  var cats = getCats();
+  var openCat = APP.notesCat ? cats.filter(function(c){ return c.id===APP.notesCat; })[0] : null;
+
+  if (!openCat) {
+    var addRow = mk('div',{class:'add-inline'});
+    var catInp = mk('input',{type:'text',placeholder:'npr. More, Kamp, Posao...'});
+    catInp.value = APP.newCatName;
+    catInp.addEventListener('input', function(){ APP.newCatName=this.value; addCatBtn.disabled=!APP.newCatName.trim(); });
+    catInp.addEventListener('keydown', function(e){ if (e.key==='Enter') addCatBtn.click(); });
+    addRow.appendChild(catInp);
+    var addCatBtn = mk('button',{disabled:!APP.newCatName.trim()});
+    addCatBtn.textContent='+';
+    addCatBtn.addEventListener('click', function(){
+      var name = APP.newCatName.trim();
+      if (!name) return;
+      saveCats(getCats().concat([{id:Date.now(),name:name,items:[]}]));
+      APP.newCatName='';
+      render();
+    });
+    addRow.appendChild(addCatBtn);
+    page.appendChild(addRow);
+
+    if (cats.length === 0) {
+      page.appendChild(emptyState('☰','Nema kategorija. Dodaj prvu iznad (npr. More).'));
+      return;
+    }
+    var grid = mk('div',{class:'cat-grid'});
+    cats.forEach(function(c) {
+      var card = mk('div',{class:'cat-card'});
+      card.appendChild(textEl('div','cat-card-name', c.name));
+      var doneN = c.items.filter(function(i){return i.done;}).length;
+      card.appendChild(textEl('div','cat-card-count', c.items.length===0 ? 'Prazno' : (doneN+' / '+c.items.length)));
+      if (c.items.length) {
+        var bar = mk('div',{class:'cat-bar'});
+        bar.appendChild(mk('span',{style:'width:'+Math.round(doneN/c.items.length*100)+'%'}));
+        card.appendChild(bar);
+      }
+      var del = mk('button',{class:'cat-card-del'}); del.textContent='×';
+      del.addEventListener('click', function(e){
+        e.stopPropagation();
+        if (!confirm('Obrisati kategoriju "'+c.name+'"?')) return;
+        saveCats(getCats().filter(function(x){return x.id!==c.id;}));
+        render();
+      });
+      card.appendChild(del);
+      card.addEventListener('click', function(){ APP.notesCat=c.id; render(); });
+      grid.appendChild(card);
+    });
+    page.appendChild(grid);
+    return;
+  }
+
+  var back = mk('button',{class:'cat-back'}); back.textContent='← Sve kategorije';
+  back.addEventListener('click', function(){ APP.notesCat=null; render(); });
+  page.appendChild(back);
+  page.appendChild(textEl('div','card-title', openCat.name));
+
+  function mutateCat(fn) {
+    var all = getCats();
+    var target = all.filter(function(c){ return c.id===openCat.id; })[0];
+    if (target) fn(target);
+    saveCats(all);
+    render();
+  }
+
+  var itemAddRow = mk('div',{class:'add-inline'});
+  var itemInp = mk('input',{type:'text',placeholder:'Dodaj stvar...'});
+  itemInp.value = APP.newItemText;
+  itemInp.addEventListener('input', function(){ APP.newItemText=this.value; addItemBtn.disabled=!APP.newItemText.trim(); });
+  itemInp.addEventListener('keydown', function(e){ if (e.key==='Enter') addItemBtn.click(); });
+  itemAddRow.appendChild(itemInp);
+  var addItemBtn = mk('button',{disabled:!APP.newItemText.trim()});
+  addItemBtn.textContent='+';
+  addItemBtn.addEventListener('click', function(){
+    var text = APP.newItemText.trim();
+    if (!text) return;
+    APP.newItemText='';
+    mutateCat(function(t){ t.items = t.items.concat([{id:Date.now(),text:text,done:false}]); });
+  });
+  itemAddRow.appendChild(addItemBtn);
+  page.appendChild(itemAddRow);
+
+  if (openCat.items.length === 0) {
+    page.appendChild(emptyState('○','Nema stvari u ovoj kategoriji.'));
+    return;
+  }
+  openCat.items.forEach(function(it) {
+    var row = mk('div',{class:'cat-item'});
+    var chk = mk('button',{class:'cat-item-check'+(it.done?' done':'')});
+    if (it.done) chk.appendChild(svgEl('<polyline points="20 6 9 17 4 12"/>',13,'var(--accent-ink)'));
+    chk.addEventListener('click', function(){
+      mutateCat(function(t){ t.items = t.items.map(function(i){ return i.id===it.id ? Object.assign({},i,{done:!i.done}) : i; }); });
+    });
+    row.appendChild(chk);
+    row.appendChild(textEl('div','cat-item-text'+(it.done?' done':''), it.text));
+    var idel = mk('button',{class:'ri-del'}); idel.textContent='×';
+    idel.addEventListener('click', function(){
+      mutateCat(function(t){ t.items = t.items.filter(function(i){ return i.id!==it.id; }); });
+    });
+    row.appendChild(idel);
+    page.appendChild(row);
+  });
+}
+
+// ── Calendar tab ──────────────────────────────────────────────────────────
+function renderCalendarTab(page) {
+  var events = getEvents();
+  var y = APP.calYear, m = APP.calMonthIdx;
+
+  var nav = mk('div',{class:'cal-nav'});
+  var prevBtn = mk('button'); prevBtn.textContent='‹';
+  prevBtn.addEventListener('click', function(){ var mm=m-1, yy=y; if(mm<0){mm=11;yy--;} APP.calMonthIdx=mm; APP.calYear=yy; render(); });
+  nav.appendChild(prevBtn);
+  nav.appendChild(textEl('div','cal-nav-label', MONTHS[m]+' '+y));
+  var nextBtn = mk('button'); nextBtn.textContent='›';
+  nextBtn.addEventListener('click', function(){ var mm=m+1, yy=y; if(mm>11){mm=0;yy++;} APP.calMonthIdx=mm; APP.calYear=yy; render(); });
+  nav.appendChild(nextBtn);
+  page.appendChild(nav);
+
+  var grid = mk('div',{class:'cal-grid'});
+  DOWS.forEach(function(d){ grid.appendChild(textEl('div','cal-dow', d)); });
+
+  var startOffset = (new Date(y, m, 1).getDay()+6)%7; // Monday=0
+  var daysInMonth = new Date(y, m+1, 0).getDate();
+  var daysInPrevMonth = new Date(y, m, 0).getDate();
+  var tKey = todayKey();
+
+  var evByDate = {};
+  events.forEach(function(ev){ (evByDate[ev.date] = evByDate[ev.date] || []).push(ev); });
+
+  var cells = [];
+  for (var i=0;i<startOffset;i++) cells.push({d:daysInPrevMonth-startOffset+i+1, other:true, key:null});
+  for (var d=1; d<=daysInMonth; d++) cells.push({d:d, other:false, key:dkey(y,m,d)});
+  while (cells.length % 7 !== 0) cells.push({d:cells.length-(startOffset+daysInMonth)+1, other:true, key:null});
+
+  cells.forEach(function(c) {
+    var cEl = mk('div',{class:'cal-day'+(c.other?' other':'')+(c.key===tKey?' today':'')+(c.key===APP.calSelDate?' selected':'')});
+    cEl.appendChild(textEl('div', null, String(c.d)));
+    if (c.key && evByDate[c.key] && evByDate[c.key].length>0) cEl.appendChild(mk('div',{class:'cal-day-dot'}));
+    if (!c.other) cEl.addEventListener('click', function(){ APP.calSelDate=c.key; APP.calEditId=null; render(); });
+    grid.appendChild(cEl);
+  });
+  page.appendChild(grid);
+
+  var editingEv = APP.calEditId !== null;
+  var evCard = mk('div',{class:'card'});
+  evCard.appendChild(textEl('div','card-title',
+    editingEv ? 'Uredi zadatak' : (APP.calSelDate ? fmtDateLabel(APP.calSelDate) : 'Odaberi datum')));
+
+  var evF1 = mk('div',{class:'field'});
+  evF1.appendChild(label('Naziv *'));
+  var evInp1 = mk('input',{type:'text',placeholder:'Šta trebaš uraditi...'});
+  evInp1.value = APP.calAddTitle;
+  evInp1.addEventListener('input', function(){ APP.calAddTitle=this.value; evAddBtn.disabled=!APP.calAddTitle.trim(); });
+  evF1.appendChild(evInp1); evCard.appendChild(evF1);
+
+  var evRow = mk('div',{class:'row2'});
+  var evF2 = mk('div',{class:'field'});
+  evF2.appendChild(label('Vrijeme'));
+  var evInp2 = mk('input',{type:'time'}); evInp2.value=APP.calAddTime;
+  evInp2.addEventListener('input', function(){ APP.calAddTime=this.value; });
+  evF2.appendChild(evInp2); evRow.appendChild(evF2);
+
+  var evF3 = mk('div',{class:'field'});
+  evF3.appendChild(label('Napomena'));
+  var evInp3 = mk('input',{type:'text',placeholder:'Detalji...'});
+  evInp3.value = APP.calAddNote;
+  evInp3.addEventListener('input', function(){ APP.calAddNote=this.value; });
+  evF3.appendChild(evInp3); evRow.appendChild(evF3);
+  evCard.appendChild(evRow);
+
+  evCard.appendChild(textEl('div','field-hint','Postavi vrijeme da zadatak zazvoni kao alarm (traži PIN za gašenje).'));
+
+  var evAddBtn = mk('button',{class:'btn-red',disabled:!APP.calAddTitle.trim()});
+  evAddBtn.textContent = editingEv ? 'Sačuvaj izmjene' : 'Dodaj u kalendar';
+  evAddBtn.addEventListener('click', function(){
+    if (!APP.calAddTitle.trim() || !APP.calSelDate) return;
+    if (editingEv) {
+      var old = getEvents().filter(function(x){ return x.id === APP.calEditId; })[0];
+      if (old) {
+        cancelRem(old.id);
+        var upd = Object.assign({}, old, {
+          date: APP.calSelDate, time: APP.calAddTime,
+          title: APP.calAddTitle.trim(), note: APP.calAddNote.trim(), fired: false
+        });
+        saveEvents(getEvents().map(function(x){ return x.id === upd.id ? upd : x; }));
+        scheduleEvent(upd);
+        toast('Izmjene sačuvane ✓');
+      }
+    } else {
+      var ev = {id:'ev'+Date.now(), date:APP.calSelDate, time:APP.calAddTime,
+                title:APP.calAddTitle.trim(), note:APP.calAddNote.trim(), fired:false};
+      saveEvents(getEvents().concat([ev]));
+      scheduleEvent(ev, true);
+      toast(ev.time ? 'Zadatak dodan — zvoni u ' + fmtTime(ev.time) : 'Zadatak dodan');
+    }
+    APP.calAddTitle=''; APP.calAddTime=''; APP.calAddNote=''; APP.calEditId=null;
+    render();
+  });
+  evCard.appendChild(evAddBtn);
+
+  if (editingEv) {
+    var evCancel = mk('button',{class:'btn-ghost'});
+    evCancel.textContent = 'Odustani';
+    evCancel.addEventListener('click', function(){
+      APP.calAddTitle=''; APP.calAddTime=''; APP.calAddNote=''; APP.calEditId=null; render();
+    });
+    evCard.appendChild(evCancel);
+  }
+  page.appendChild(evCard);
+
+  var dayEvents = (evByDate[APP.calSelDate] || []).slice().sort(function(a,b){
+    return (a.time||'99:99').localeCompare(b.time||'99:99');
+  });
+  page.appendChild(textEl('div','cal-events-title','Zadaci za ovaj dan'));
+  if (dayEvents.length === 0) {
+    page.appendChild(emptyState('○','Nema zadataka za ovaj dan.'));
+    return;
+  }
+  dayEvents.forEach(function(ev) {
+    var ri = mk('div',{class:'ri'});
+    var tap = mk('div',{class:'ri-tap'});
+    if (ev.time) tap.appendChild(textEl('div','ev-time', fmtTime(ev.time)));
+    else tap.appendChild(mk('div',{class:'ri-dot'+(ev.fired?' done':'')}));
+    var rb = mk('div',{class:'ri-body'});
+    rb.appendChild(textEl('div','ri-name'+(ev.fired?' done':''), ev.title));
+    var bits = [];
+    if (ev.time) bits.push('🔔 alarm');
+    if (ev.fired) bits.push('✓ odzvonio');
+    if (bits.length) rb.appendChild(textEl('div','ri-meta', bits.join(' · ')));
+    if (ev.note) rb.appendChild(textEl('div','ri-note', ev.note));
+    tap.appendChild(rb);
+    tap.addEventListener('click', function(){
+      APP.calEditId = ev.id; APP.calSelDate = ev.date;
+      APP.calAddTitle = ev.title; APP.calAddTime = ev.time || ''; APP.calAddNote = ev.note || '';
+      render();
+    });
+    ri.appendChild(tap);
+    var del = mk('button',{class:'ri-del'}); del.textContent='×';
+    del.addEventListener('click', function(){
+      cancelRem(ev.id);
+      saveEvents(getEvents().filter(function(x){ return x.id!==ev.id; }));
+      if (APP.calEditId === ev.id) { APP.calEditId=null; APP.calAddTitle=''; APP.calAddTime=''; APP.calAddNote=''; }
+      toast('Obrisano');
+      render();
+    });
+    ri.appendChild(del);
+    page.appendChild(ri);
+  });
+}
+
+// ── Backup ────────────────────────────────────────────────────────────────
+function exportBackup() {
+  var data = {
+    kind: 'pin-podsjetnik-backup', version: APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    app_pin: lsGet('app_pin',''),
+    reminders: getRems(), note_categories: getCats(),
+    cal_events: getEvents(), settings: getSettings()
+  };
+  try {
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = mk('a',{href:url,download:'podsjetnik-'+todayKey()+'.json'});
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+    toast('Kopija spremljena ✓');
+  } catch(e) { toast('Spremanje nije uspjelo'); }
+}
+function importBackup(file) {
+  var fr = new FileReader();
+  fr.onload = function() {
+    var d;
+    try { d = JSON.parse(fr.result); } catch(e) { toast('Datoteka nije ispravna'); return; }
+    if (!d || typeof d !== 'object' ||
+        (!Array.isArray(d.reminders) && !Array.isArray(d.cal_events) && !Array.isArray(d.note_categories))) {
+      toast('Ovo nije kopija ove aplikacije');
+      return;
+    }
+    if (!confirm('Zamijeniti sve trenutne podatke podacima iz kopije?')) return;
+    swPost({ type:'CANCEL_ALL' });
+    if (Array.isArray(d.reminders)) saveRems(d.reminders);
+    if (Array.isArray(d.note_categories)) saveCats(d.note_categories);
+    if (Array.isArray(d.cal_events)) saveEvents(d.cal_events);
+    if (d.settings) saveSettings(d.settings);
+    if (d.app_pin) lsSet('app_pin', d.app_pin);
+    toast('Kopija uvezena ✓');
+    setTimeout(function(){ location.reload(); }, 800);
+  };
+  fr.onerror = function(){ toast('Čitanje datoteke nije uspjelo'); };
+  fr.readAsText(file);
+}
+
+// ── Settings tab ──────────────────────────────────────────────────────────
+function settingsRow(title, sub, control) {
+  var row = mk('div',{class:'srow'});
+  var left = mk('div');
+  left.appendChild(textEl('div','srow-label', title));
+  if (sub) left.appendChild(textEl('div','srow-sub', sub));
+  row.appendChild(left);
+  if (control) row.appendChild(control);
+  return row;
+}
+function segControl(options, current, onPick) {
+  var seg = mk('div',{class:'seg'});
+  options.forEach(function(o){
+    var b = mk('button',{class: o[0] === current ? 'on' : ''});
+    b.textContent = o[1];
+    b.addEventListener('click', function(){ onPick(o[0]); });
+    seg.appendChild(b);
+  });
+  return seg;
+}
+
+function renderSettingsTab(page) {
+  var st = getSettings();
+
+  // Security
+  var sc = mk('div',{class:'card'});
+  sc.appendChild(textEl('div','card-title','Sigurnost'));
+  var pinBtn = mk('button'); pinBtn.textContent='Promijeni';
+  pinBtn.addEventListener('click', function(){ APP.setupStep='set'; APP.sp=''; APP.sc=''; APP.serr=''; APP.view='setup'; render(); });
+  sc.appendChild(settingsRow('PIN kod', '●'.repeat(Math.max(4, APP.pin.length)), pinBtn));
+
+  var delBtn = mk('button'); delBtn.textContent='Obriši';
+  delBtn.addEventListener('click', function(){
+    if (!confirm('Obrisati SVE podatke (PIN, podsjetnike, bilješke, kalendar)?')) return;
+    if (!confirm('Sigurno? Ovo se ne može poništiti. Napravi kopiju prije brisanja.')) return;
+    swPost({type:'CANCEL_ALL'}); syncCancelAllToServer(); lsClear(); location.reload();
+  });
+  sc.appendChild(settingsRow('Obriši sve', 'Briše PIN, podsjetnike, bilješke i kalendar', delBtn));
+  page.appendChild(sc);
+
+  // Appearance & behaviour
+  var pc = mk('div',{class:'card'});
+  pc.appendChild(textEl('div','card-title','Izgled i ponašanje'));
+  pc.appendChild(settingsRow('Tema', null, segControl(
+    [['auto','Auto'],['light','Svijetla'],['dark','Tamna']], st.theme,
+    function(v){ var s=getSettings(); s.theme=v; saveSettings(s); applyTheme(); render(); }
+  )));
+  pc.appendChild(settingsRow('Odgoda alarma', 'Koliko "Odgodi" pomjera alarm', segControl(
+    [[5,'5'],[10,'10'],[15,'15'],[30,'30 min']], st.snooze,
+    function(v){ var s=getSettings(); s.snooze=v; saveSettings(s); render(); }
+  )));
+  page.appendChild(pc);
+
+  // Notifications
+  var nc = mk('div',{class:'card'});
+  nc.appendChild(textEl('div','card-title','Notifikacije'));
+  var statusText =
+    APP.notifPerm==='granted' ? 'Dozvoljeno ✓' :
+    APP.notifPerm==='denied'  ? 'Blokirano' :
+    APP.notifPerm==='unsupported' ? (notifNeedsInstall() ? 'Dostupno tek nakon instalacije na početni ekran' : 'Preglednik ne podržava') :
+                                'Nije postavljeno';
+  var allowBtn = null;
+  if (APP.notifPerm==='default' || APP.notifPerm==='unsupported') {
+    allowBtn = mk('button'); allowBtn.textContent='Dozvoli';
+    allowBtn.addEventListener('click', requestNotifPerm);
+  }
+  nc.appendChild(settingsRow('Status', statusText, allowBtn));
+
+  if (APP.notifPerm === 'granted') {
+    var testBtn = mk('button'); testBtn.textContent='Pokreni';
+    testBtn.addEventListener('click', function(){
+      swPost({ type:'TEST', seconds:15 });
+      toast('Test alarm za 15 sekundi — zatvori app da provjeriš pozadinu');
+    });
+    nc.appendChild(settingsRow('Test alarma', 'Zazvoni za 15 sekundi — provjeri radi li i kad je app zatvoren', testBtn));
+  }
+
+  // Blocked can only be undone outside the app — show exactly where.
+  if (APP.notifPerm === 'denied') {
+    var how = mk('div',{style:'padding-top:12px'});
+    how.appendChild(textEl('div',null,'Kako odblokirati:','font-size:12px;color:var(--text);font-weight:700;margin-bottom:8px'));
+    notifUnblockSteps().forEach(function(step, i) {
+      how.appendChild(textEl('div',null,(i+1)+'. '+step,'font-size:12px;color:var(--text-dim);line-height:1.65;margin-bottom:4px'));
+    });
+    var recheck = mk('button',{style:'margin-top:10px;font-size:13px;color:var(--accent);font-weight:700;background:none;border:1px solid var(--border);border-radius:8px;padding:9px 14px;cursor:pointer'});
+    recheck.textContent = 'Provjeri ponovo';
+    recheck.addEventListener('click', function(){
+      var before = APP.notifPerm;
+      refreshNotifPerm();
+      if (Notification.permission === before) {
+        APP.notifMsg = 'I dalje blokirano. Provjeri korake iznad pa dodirni ponovo.';
+        render();
+      }
+    });
+    how.appendChild(recheck);
+    nc.appendChild(how);
+  }
+  if (APP.notifMsg) nc.appendChild(textEl('div',null,APP.notifMsg,'font-size:12px;color:var(--text-dim);line-height:1.6;padding-top:10px'));
+  page.appendChild(nc);
+
+  // Backup
+  var bc = mk('div',{class:'card'});
+  bc.appendChild(textEl('div','card-title','Sigurnosna kopija'));
+  bc.appendChild(textEl('div',null,
+    'Podaci žive samo na ovom uređaju. Brisanje podataka preglednika ili gubitak telefona znači gubitak svega — spremi kopiju s vremena na vrijeme.',
+    'font-size:12px;color:var(--text-faint);line-height:1.7;margin-bottom:6px'));
+  var expBtn = mk('button'); expBtn.textContent='Izvezi';
+  expBtn.addEventListener('click', exportBackup);
+  bc.appendChild(settingsRow('Izvezi kopiju', 'Sprema .json datoteku na uređaj', expBtn));
+
+  var fileInp = mk('input',{type:'file',accept:'application/json,.json',style:'display:none'});
+  fileInp.addEventListener('change', function(){ if (this.files && this.files[0]) importBackup(this.files[0]); });
+  var impBtn = mk('button'); impBtn.textContent='Uvezi';
+  impBtn.addEventListener('click', function(){ fileInp.click(); });
+  bc.appendChild(settingsRow('Uvezi kopiju', 'Zamjenjuje sve trenutne podatke', impBtn));
+  bc.appendChild(fileInp);
+  page.appendChild(bc);
+
+  // Reliability
+  var rc = mk('div',{class:'card'});
+  rc.appendChild(textEl('div','card-title','Pouzdanost alarma'));
+  rc.appendChild(textEl('div',null,
+    'Android može ugasiti app u pozadini, pa alarm ne zazvoni tačno na vrijeme — u tom slučaju zazvoni kao "zakasnio" čim se app probudi. Za najpouzdaniji rad:',
+    'font-size:12px;color:var(--text-faint);line-height:1.7;margin-bottom:10px'));
+  ['Isključi optimizaciju baterije za ovu app (Settings → Apps → Battery → Bez ograničenja)',
+   'Uključi Autostart za ovu app (Settings → Apps → Autostart)',
+   'Zaključaj app u pregledu nedavnih (Recents) — dugi pritisak na karticu → Lock',
+   'Instaliraj app na početni ekran umjesto da je koristiš u tabu preglednika'
+  ].forEach(function(step) {
+    rc.appendChild(textEl('div',null,'• '+step,'font-size:12px;color:var(--text-faint);line-height:1.7;margin-bottom:3px'));
+  });
+  page.appendChild(rc);
+
+  // About
+  var vc = mk('div',{class:'card'});
+  vc.appendChild(textEl('div','card-title','O aplikaciji'));
+  var vb = mk('button');
+  vb.textContent = APP.swUpdateAvailable ? 'Osvježi' : 'Provjeri';
+  vb.addEventListener('click', function(){
+    if (APP.swUpdateAvailable) { applySWUpdate(); return; }
+    if (!APP.swReg) return;
+    vb.textContent = '...';
+    APP.swReg.update().then(function(){
+      if (!APP.swUpdateAvailable) { vb.textContent = 'Ažurno ✓'; setTimeout(function(){ vb.textContent='Provjeri'; }, 2000); }
+    }).catch(function(){ vb.textContent = 'Provjeri'; });
+  });
+  vc.appendChild(settingsRow('Verzija',
+    APP.swUpdateAvailable ? APP_VERSION + ' (učitana) — nova je dostupna' : APP_VERSION, vb));
+  vc.appendChild(settingsRow('Push server', PUSH_SERVER_URL ? 'Povezan ✓' : 'Nije postavljen (lokalni alarmi)', null));
+  page.appendChild(vc);
 }
 
 // ── Main view ─────────────────────────────────────────────────────────────
@@ -740,37 +1616,24 @@ function renderMain() {
   var rems = getRems();
   var active = rems.filter(function(r){ return !r.fired; });
   var page = mk('div',{class:'page'});
-
-  // Header
-  var hdr = mk('div',{class:'header'});
-  var ico = mk('div',{class:'header-icon'});
-  ico.appendChild(svgEl('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',18,'#fff'));
-  hdr.appendChild(ico);
-  var htxt = mk('div');
-  var ht1=mk('div',{class:'header-title'}); ht1.textContent='PIN Podsjetnik'; htxt.appendChild(ht1);
-  var ht2=mk('div',{class:'header-sub'}); ht2.textContent='● AKTIVAN'; htxt.appendChild(ht2);
-  hdr.appendChild(htxt);
-  hdr.appendChild(versionBadge());
-  page.appendChild(hdr);
+  page.appendChild(appHeader('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>','● AKTIVAN'));
 
   // One-tap prompt only while permission can still be granted from here. A
   // blocked permission cannot be re-requested by script, so nothing is shown
   // at the top for it — the full status and instructions live under ⚙.
   if (APP.notifPerm === 'default' && !APP.notifAsked) {
     var bn = mk('div',{class:'banner banner-warn'});
-    var bp = mk('p'); bp.textContent='⚠ Dozvoli notifikacije za rad u pozadini.';
-    bn.appendChild(bp);
+    bn.appendChild(textEl('p',null,'⚠ Dozvoli notifikacije za rad u pozadini.'));
     var bb = mk('button'); bb.textContent='Dozvoli';
     bb.addEventListener('click', requestNotifPerm);
     bn.appendChild(bb);
-    var bx = mk('button',{style:'background:transparent;color:#1c1c22;opacity:.5;padding:6px 8px'});
+    var bx = mk('button',{style:'background:transparent;color:var(--text);opacity:.5;padding:6px 8px'});
     bx.textContent='×';
     bx.addEventListener('click', function(){ markNotifAsked(); render(); });
     bn.appendChild(bx);
     page.appendChild(bn);
   }
 
-  // Tabs
   var tabsEl = mk('div',{class:'tabs'});
   [['add','Dodaj'],['list','Lista'],['notes','Bilješke'],['calendar','Kalendar'],['settings','⚙']].forEach(function(pair){
     var t = mk('button',{class:'tab'+(APP.tab===pair[0]?' active':'')});
@@ -778,445 +1641,29 @@ function renderMain() {
     if (pair[0]==='list' && active.length>0) {
       var badge = mk('span',{class:'tab-badge'}); badge.textContent=String(active.length); t.appendChild(badge);
     }
-    t.addEventListener('click', function(){ APP.tab=pair[0]; render(); });
+    t.addEventListener('click', function(){
+      if (APP.tab === 'add' && pair[0] !== 'add') resetAddForm();
+      APP.tab=pair[0];
+      render();
+    });
     tabsEl.appendChild(t);
   });
   page.appendChild(tabsEl);
 
-  // ── ADD TAB ──
-  if (APP.tab === 'add') {
-    var card = mk('div',{class:'card'});
-    var ct = mk('div',{class:'card-title'}); ct.textContent='Novi podsjetnik'; card.appendChild(ct);
+  if (APP.tab === 'add') renderAddTab(page);
+  if (APP.tab === 'list') renderListTab(page);
+  if (APP.tab === 'notes') renderNotesTab(page);
+  if (APP.tab === 'calendar') renderCalendarTab(page);
+  if (APP.tab === 'settings') renderSettingsTab(page);
 
-    // Title field
-    var f1 = mk('div',{class:'field'});
-    var l1=mk('label'); l1.textContent='Naziv *'; f1.appendChild(l1);
-    var inp1=mk('input',{type:'text',placeholder:'npr. Popij lijek, Sastanak...'});
-    inp1.value = APP.addTitle;
-    inp1.addEventListener('input', function(){ APP.addTitle=this.value; addBtn.disabled=(!APP.addTitle.trim()||!APP.addTime); });
-    f1.appendChild(inp1); card.appendChild(f1);
-
-    // Note field
-    var f2 = mk('div',{class:'field'});
-    var l2=mk('label'); l2.textContent='Napomena'; f2.appendChild(l2);
-    var inp2=mk('input',{type:'text',placeholder:'Detalji...'});
-    inp2.value = APP.addNote;
-    inp2.addEventListener('input', function(){ APP.addNote=this.value; });
-    f2.appendChild(inp2); card.appendChild(f2);
-
-    // Time + Repeat
-    var row = mk('div',{class:'row2'});
-    var f3=mk('div',{class:'field'}); var l3=mk('label'); l3.textContent='Vrijeme *'; f3.appendChild(l3);
-    var inp3=mk('input',{type:'time'}); inp3.value=APP.addTime;
-    inp3.addEventListener('input', function(){ APP.addTime=this.value; addBtn.disabled=(!APP.addTitle.trim()||!APP.addTime); });
-    f3.appendChild(inp3); row.appendChild(f3);
-
-    var f4=mk('div',{class:'field'}); var l4=mk('label'); l4.textContent='Ponavljanje'; f4.appendChild(l4);
-    var selEl=sel(APP.addRepeat,[['once','Jednom'],['daily','Svaki dan'],['weekdays','Radni dani']]);
-    selEl.addEventListener('change', function(){ APP.addRepeat=this.value; });
-    f4.appendChild(selEl); row.appendChild(f4);
-    card.appendChild(row);
-
-    var addBtn = mk('button',{class:'btn-red',disabled:(!APP.addTitle.trim()||!APP.addTime)});
-    addBtn.textContent='Postavi podsjetnik';
-    addBtn.addEventListener('click', function(){
-      if(!APP.addTitle.trim()||!APP.addTime) return;
-      var r={id:Date.now(),title:APP.addTitle.trim(),note:APP.addNote.trim(),time:APP.addTime,repeat:APP.addRepeat,fired:false};
-      saveRems(getRems().concat([r]));
-      scheduleRem(r, true);
-      APP.addTitle=''; APP.addNote=''; APP.addTime=''; APP.addRepeat='daily'; APP.tab='list';
-      render();
-    });
-    card.appendChild(addBtn);
-    page.appendChild(card);
-  }
-
-  // ── LIST TAB ──
-  if (APP.tab === 'list') {
-    if (rems.length === 0) {
-      var emp = mk('div',{class:'empty'});
-      var eico=mk('div',{class:'empty-icon'}); eico.textContent='○'; emp.appendChild(eico);
-      var ep=mk('p',{style:'font-size:14px;line-height:1.7;color:#9a9aa4'}); ep.textContent='Nema podsjetnika. Dodaj ih u tabu + Dodaj.'; emp.appendChild(ep);
-      page.appendChild(emp);
-    } else {
-      rems.forEach(function(r) {
-        var ri = mk('div',{class:'ri'});
-        var rdot = mk('div',{class:'ri-dot'+(r.fired?' done':'')}); ri.appendChild(rdot);
-        var rb = mk('div',{class:'ri-body'});
-        var rn=mk('div',{class:'ri-name'}); rn.textContent=r.title; rb.appendChild(rn);
-        var rm=mk('div',{class:'ri-meta'}); rm.textContent=fmtTime(r.time)+' · '+rl(r.repeat)+(r.fired?' · ✓':''); rb.appendChild(rm);
-        if(r.note){ var rno=mk('div',{class:'ri-note'}); rno.textContent=r.note; rb.appendChild(rno); }
-        ri.appendChild(rb);
-        var rdel=mk('button',{class:'ri-del'}); rdel.textContent='×';
-        rdel.addEventListener('click', (function(rid){ return function(){ cancelRem(rid); saveRems(getRems().filter(function(x){return x.id!==rid;})); render(); }; })(r.id));
-        ri.appendChild(rdel);
-        page.appendChild(ri);
-      });
-    }
-  }
-
-  // ── NOTES TAB (categories) ──
-  if (APP.tab === 'notes') {
-    var cats = getCats();
-    var openCat = APP.notesCat ? cats.filter(function(c){ return c.id===APP.notesCat; })[0] : null;
-
-    if (!openCat) {
-      // Category grid
-      var addRow = mk('div',{class:'add-inline'});
-      var catInp = mk('input',{type:'text',placeholder:'npr. More, Kamp, Posao...'});
-      catInp.value = APP.newCatName;
-      catInp.addEventListener('input', function(){ APP.newCatName=this.value; addCatBtn.disabled=!APP.newCatName.trim(); });
-      catInp.addEventListener('keydown', function(e){ if (e.key==='Enter') addCatBtn.click(); });
-      addRow.appendChild(catInp);
-      var addCatBtn = mk('button',{disabled:!APP.newCatName.trim()});
-      addCatBtn.textContent='+';
-      addCatBtn.addEventListener('click', function(){
-        var name = APP.newCatName.trim();
-        if (!name) return;
-        saveCats(getCats().concat([{id:Date.now(),name:name,items:[]}]));
-        APP.newCatName='';
-        render();
-      });
-      addRow.appendChild(addCatBtn);
-      page.appendChild(addRow);
-
-      if (cats.length === 0) {
-        var emp2 = mk('div',{class:'empty'});
-        var eico2=mk('div',{class:'empty-icon'}); eico2.textContent='☰'; emp2.appendChild(eico2);
-        var ep2=mk('p',{style:'font-size:14px;line-height:1.7;color:#9a9aa4'}); ep2.textContent='Nema kategorija. Dodaj prvu iznad (npr. More).'; emp2.appendChild(ep2);
-        page.appendChild(emp2);
-      } else {
-        var grid = mk('div',{class:'cat-grid'});
-        cats.forEach(function(c) {
-          var card = mk('div',{class:'cat-card'});
-          var cn = mk('div',{class:'cat-card-name'}); cn.textContent=c.name; card.appendChild(cn);
-          var cc = mk('div',{class:'cat-card-count'});
-          var doneN = c.items.filter(function(i){return i.done;}).length;
-          cc.textContent = c.items.length===0 ? 'Prazno' : (doneN+' / '+c.items.length);
-          card.appendChild(cc);
-          var del = mk('button',{class:'cat-card-del'}); del.textContent='×';
-          del.addEventListener('click', (function(cid){ return function(e){
-            e.stopPropagation();
-            if (!confirm('Obrisati kategoriju?')) return;
-            saveCats(getCats().filter(function(x){return x.id!==cid;}));
-            render();
-          }; })(c.id));
-          card.appendChild(del);
-          card.addEventListener('click', (function(cid){ return function(){ APP.notesCat=cid; render(); }; })(c.id));
-          grid.appendChild(card);
-        });
-        page.appendChild(grid);
-      }
-    } else {
-      // Inside a category — list of items
-      var back = mk('button',{class:'cat-back'}); back.textContent='← Sve kategorije';
-      back.addEventListener('click', function(){ APP.notesCat=null; render(); });
-      page.appendChild(back);
-
-      var catTitle = mk('div',{class:'card-title'}); catTitle.textContent=openCat.name; page.appendChild(catTitle);
-
-      var itemAddRow = mk('div',{class:'add-inline'});
-      var itemInp = mk('input',{type:'text',placeholder:'Dodaj stvar...'});
-      itemInp.value = APP.newItemText;
-      itemInp.addEventListener('input', function(){ APP.newItemText=this.value; addItemBtn.disabled=!APP.newItemText.trim(); });
-      itemInp.addEventListener('keydown', function(e){ if (e.key==='Enter') addItemBtn.click(); });
-      itemAddRow.appendChild(itemInp);
-      var addItemBtn = mk('button',{disabled:!APP.newItemText.trim()});
-      addItemBtn.textContent='+';
-      addItemBtn.addEventListener('click', function(){
-        var text = APP.newItemText.trim();
-        if (!text) return;
-        var allCats = getCats();
-        var target = allCats.filter(function(c){return c.id===openCat.id;})[0];
-        if (target) target.items = target.items.concat([{id:Date.now(),text:text,done:false}]);
-        saveCats(allCats);
-        APP.newItemText='';
-        render();
-      });
-      itemAddRow.appendChild(addItemBtn);
-      page.appendChild(itemAddRow);
-
-      if (openCat.items.length === 0) {
-        var emp3 = mk('div',{class:'empty'});
-        var eico3=mk('div',{class:'empty-icon'}); eico3.textContent='○'; emp3.appendChild(eico3);
-        var ep3=mk('p',{style:'font-size:14px;line-height:1.7;color:#9a9aa4'}); ep3.textContent='Nema stvari u ovoj kategoriji.'; emp3.appendChild(ep3);
-        page.appendChild(emp3);
-      } else {
-        openCat.items.forEach(function(it) {
-          var row = mk('div',{class:'cat-item'});
-          var chk = mk('button',{class:'cat-item-check'+(it.done?' done':'')});
-          if (it.done) chk.appendChild(svgEl('<polyline points="20 6 9 17 4 12"/>',13,'#fff'));
-          chk.addEventListener('click', (function(iid){ return function(){
-            var allCats = getCats();
-            var target = allCats.filter(function(c){return c.id===openCat.id;})[0];
-            if (target) target.items = target.items.map(function(i){ return i.id===iid ? Object.assign({},i,{done:!i.done}) : i; });
-            saveCats(allCats);
-            render();
-          }; })(it.id));
-          row.appendChild(chk);
-          var itxt = mk('div',{class:'cat-item-text'+(it.done?' done':'')}); itxt.textContent=it.text; row.appendChild(itxt);
-          var idel = mk('button',{class:'ri-del'}); idel.textContent='×';
-          idel.addEventListener('click', (function(iid){ return function(){
-            var allCats = getCats();
-            var target = allCats.filter(function(c){return c.id===openCat.id;})[0];
-            if (target) target.items = target.items.filter(function(i){return i.id!==iid;});
-            saveCats(allCats);
-            render();
-          }; })(it.id));
-          row.appendChild(idel);
-          page.appendChild(row);
-        });
-      }
-    }
-  }
-
-  // ── CALENDAR TAB ──
-  if (APP.tab === 'calendar') {
-    var events = getEvents();
-    var y = APP.calYear, m = APP.calMonthIdx;
-
-    // Nav
-    var nav = mk('div',{class:'cal-nav'});
-    var prevBtn = mk('button'); prevBtn.textContent='‹';
-    prevBtn.addEventListener('click', function(){ m--; if(m<0){m=11;y--;} APP.calMonthIdx=m; APP.calYear=y; render(); });
-    nav.appendChild(prevBtn);
-    var navLabel = mk('div',{class:'cal-nav-label'}); navLabel.textContent = MONTHS[m]+' '+y; nav.appendChild(navLabel);
-    var nextBtn = mk('button'); nextBtn.textContent='›';
-    nextBtn.addEventListener('click', function(){ m++; if(m>11){m=0;y++;} APP.calMonthIdx=m; APP.calYear=y; render(); });
-    nav.appendChild(nextBtn);
-    page.appendChild(nav);
-
-    // Grid
-    var grid2 = mk('div',{class:'cal-grid'});
-    DOWS.forEach(function(d){ var dEl=mk('div',{class:'cal-dow'}); dEl.textContent=d; grid2.appendChild(dEl); });
-
-    var firstOfMonth = new Date(y, m, 1);
-    var startOffset = (firstOfMonth.getDay()+6)%7; // Monday=0
-    var daysInMonth = new Date(y, m+1, 0).getDate();
-    var daysInPrevMonth = new Date(y, m, 0).getDate();
-    var tKey = todayKey();
-
-    var evByDate = {};
-    events.forEach(function(ev){ (evByDate[ev.date] = evByDate[ev.date] || []).push(ev); });
-
-    var cells = [];
-    for (var i=0;i<startOffset;i++) {
-      var pd = daysInPrevMonth - startOffset + i + 1;
-      cells.push({d:pd, other:true, key:null});
-    }
-    for (var d=1; d<=daysInMonth; d++) cells.push({d:d, other:false, key:dkey(y,m,d)});
-    while (cells.length % 7 !== 0) {
-      var nd = cells.length - (startOffset+daysInMonth) + 1;
-      cells.push({d:nd, other:true, key:null});
-    }
-
-    cells.forEach(function(c) {
-      var cls = 'cal-day'+(c.other?' other':'')+(c.key===tKey?' today':'')+(c.key===APP.calSelDate?' selected':'');
-      var cEl = mk('div',{class:cls});
-      var num = mk('div'); num.textContent=String(c.d); cEl.appendChild(num);
-      if (c.key && evByDate[c.key] && evByDate[c.key].length>0) cEl.appendChild(mk('div',{class:'cal-day-dot'}));
-      if (!c.other) {
-        cEl.addEventListener('click', (function(k){ return function(){ APP.calSelDate=k; render(); }; })(c.key));
-      }
-      grid2.appendChild(cEl);
-    });
-    page.appendChild(grid2);
-
-    // Add event form
-    var evCard = mk('div',{class:'card'});
-    var evCt = mk('div',{class:'card-title'}); evCt.textContent = APP.calSelDate ? fmtDateLabel(APP.calSelDate) : 'Odaberi datum'; evCard.appendChild(evCt);
-
-    var evF1 = mk('div',{class:'field'});
-    var evL1 = mk('label'); evL1.textContent='Naziv *'; evF1.appendChild(evL1);
-    var evInp1 = mk('input',{type:'text',placeholder:'Šta trebaš uraditi...'});
-    evInp1.value = APP.calAddTitle;
-    evInp1.addEventListener('input', function(){ APP.calAddTitle=this.value; evAddBtn.disabled=!APP.calAddTitle.trim(); });
-    evF1.appendChild(evInp1); evCard.appendChild(evF1);
-
-    var evRow = mk('div',{class:'row2'});
-    var evF2 = mk('div',{class:'field'}); var evL2=mk('label'); evL2.textContent='Vrijeme'; evF2.appendChild(evL2);
-    var evInp2 = mk('input',{type:'time'}); evInp2.value=APP.calAddTime;
-    evInp2.addEventListener('input', function(){ APP.calAddTime=this.value; });
-    evF2.appendChild(evInp2); evRow.appendChild(evF2);
-
-    var evF3 = mk('div',{class:'field'}); var evL3=mk('label'); evL3.textContent='Napomena'; evF3.appendChild(evL3);
-    var evInp3 = mk('input',{type:'text',placeholder:'Detalji...'});
-    evInp3.value = APP.calAddNote;
-    evInp3.addEventListener('input', function(){ APP.calAddNote=this.value; });
-    evF3.appendChild(evInp3); evRow.appendChild(evF3);
-    evCard.appendChild(evRow);
-
-    var evHint = mk('div',{style:'font-size:11px;color:#86868f;margin:-6px 0 12px;line-height:1.5'});
-    evHint.textContent = 'Postavi vrijeme da zadatak zazvoni kao alarm (traži PIN za gašenje).';
-    evCard.appendChild(evHint);
-
-    var evAddBtn = mk('button',{class:'btn-red',disabled:!APP.calAddTitle.trim()});
-    evAddBtn.textContent='Dodaj u kalendar';
-    evAddBtn.addEventListener('click', function(){
-      if (!APP.calAddTitle.trim() || !APP.calSelDate) return;
-      var ev={id:'ev'+Date.now(),date:APP.calSelDate,time:APP.calAddTime,title:APP.calAddTitle.trim(),note:APP.calAddNote.trim(),fired:false};
-      saveEvents(getEvents().concat([ev]));
-      scheduleEvent(ev, true);
-      APP.calAddTitle=''; APP.calAddTime=''; APP.calAddNote='';
-      render();
-    });
-    evCard.appendChild(evAddBtn);
-    page.appendChild(evCard);
-
-    // Events for selected day
-    var dayEvents = (evByDate[APP.calSelDate] || []).slice().sort(function(a,b){ return (a.time||'99:99').localeCompare(b.time||'99:99'); });
-    var evTitle = mk('div',{class:'cal-events-title'}); evTitle.textContent='Zadaci za ovaj dan'; page.appendChild(evTitle);
-    if (dayEvents.length === 0) {
-      var emp4 = mk('div',{class:'empty'});
-      var eico4=mk('div',{class:'empty-icon'}); eico4.textContent='○'; emp4.appendChild(eico4);
-      var ep4=mk('p',{style:'font-size:14px;line-height:1.7;color:#9a9aa4'}); ep4.textContent='Nema zadataka za ovaj dan.'; emp4.appendChild(ep4);
-      page.appendChild(emp4);
-    } else {
-      dayEvents.forEach(function(ev) {
-        var ri2 = mk('div',{class:'ri'});
-        if (ev.time) { var evt = mk('div',{class:'ev-time'}); evt.textContent=fmtTime(ev.time); ri2.appendChild(evt); }
-        else ri2.appendChild(mk('div',{class:'ri-dot'}));
-        var rb2 = mk('div',{class:'ri-body'});
-        var rn2=mk('div',{class:'ri-name'}); rn2.textContent=ev.title; rb2.appendChild(rn2);
-        var metaBits = [];
-        if (ev.time) metaBits.push('🔔 alarm');
-        if (ev.fired) metaBits.push('✓ odzvonio');
-        if (metaBits.length) { var rm2=mk('div',{class:'ri-meta'}); rm2.textContent=metaBits.join(' · '); rb2.appendChild(rm2); }
-        if (ev.note) { var rno2=mk('div',{class:'ri-note'}); rno2.textContent=ev.note; rb2.appendChild(rno2); }
-        ri2.appendChild(rb2);
-        var rdel2=mk('button',{class:'ri-del'}); rdel2.textContent='×';
-        rdel2.addEventListener('click', (function(eid){ return function(){ cancelRem(eid); saveEvents(getEvents().filter(function(x){return x.id!==eid;})); render(); }; })(ev.id));
-        ri2.appendChild(rdel2);
-        page.appendChild(ri2);
-      });
-    }
-  }
-
-  // ── SETTINGS TAB ──
-  if (APP.tab === 'settings') {
-    var sc = mk('div',{class:'card'});
-    var sct=mk('div',{class:'card-title'}); sct.textContent='Sigurnost'; sc.appendChild(sct);
-
-    var row1=mk('div',{class:'srow'});
-    var rl1=mk('div'); var rll1=mk('div',{class:'srow-label'}); rll1.textContent='PIN kod'; rl1.appendChild(rll1);
-    var rls1=mk('div',{class:'srow-sub'}); rls1.textContent='●'.repeat(Math.max(4,APP.pin.length)); rl1.appendChild(rls1);
-    row1.appendChild(rl1);
-    var rb1=mk('button'); rb1.textContent='Promijeni';
-    rb1.addEventListener('click', function(){ APP.setupStep='set'; APP.sp=''; APP.sc=''; APP.serr=''; APP.view='setup'; render(); });
-    row1.appendChild(rb1); sc.appendChild(row1);
-
-    var row2=mk('div',{class:'srow'});
-    var rl2=mk('div'); var rll2=mk('div',{class:'srow-label'}); rll2.textContent='Obriši sve'; rl2.appendChild(rll2);
-    var rls2=mk('div',{class:'srow-sub'}); rls2.textContent='Briše PIN i podsjetnike'; rl2.appendChild(rls2);
-    row2.appendChild(rl2);
-    var rb2=mk('button'); rb2.textContent='Obriši';
-    rb2.addEventListener('click', function(){
-      if(!confirm('Obrisati sve podatke?')) return;
-      swPost({type:'CANCEL_ALL'}); syncCancelAllToServer(); lsClear(); location.reload();
-    });
-    row2.appendChild(rb2); sc.appendChild(row2);
-    page.appendChild(sc);
-
-    var nc = mk('div',{class:'card'});
-    var nct=mk('div',{class:'card-title'}); nct.textContent='Notifikacije'; nc.appendChild(nct);
-    var nrow=mk('div',{class:'srow'});
-    var nrl=mk('div'); var nrll=mk('div',{class:'srow-label'}); nrll.textContent='Status'; nrl.appendChild(nrll);
-    var nrls=mk('div',{class:'srow-sub'});
-    nrls.textContent =
-      APP.notifPerm==='granted' ? 'Dozvoljeno ✓' :
-      APP.notifPerm==='denied'  ? 'Blokirano' :
-      APP.notifPerm==='unsupported' ? (notifNeedsInstall() ? 'Dostupno tek nakon instalacije na početni ekran' : 'Preglednik ne podržava') :
-                                  'Nije postavljeno';
-    nrl.appendChild(nrls); nrow.appendChild(nrl);
-    if(APP.notifPerm==='default' || APP.notifPerm==='unsupported'){
-      var nb=mk('button'); nb.textContent='Dozvoli';
-      nb.addEventListener('click', requestNotifPerm);
-      nrow.appendChild(nb);
-    }
-    nc.appendChild(nrow);
-
-    // Blocked can only be undone outside the app — show exactly where.
-    if (APP.notifPerm === 'denied') {
-      var how = mk('div',{style:'padding-top:12px'});
-      var howT = mk('div',{style:'font-size:12px;color:#1c1c22;font-weight:700;margin-bottom:8px'});
-      howT.textContent = 'Kako odblokirati:';
-      how.appendChild(howT);
-      notifUnblockSteps().forEach(function(step, i) {
-        var line = mk('div',{style:'font-size:12px;color:#6e6e77;line-height:1.65;margin-bottom:4px'});
-        line.textContent = (i+1) + '. ' + step;
-        how.appendChild(line);
-      });
-      var recheck = mk('button',{style:'margin-top:10px;font-size:13px;color:#e24b4a;font-weight:700;background:none;border:1px solid #dcdce4;border-radius:8px;padding:9px 14px;cursor:pointer'});
-      recheck.textContent = 'Provjeri ponovo';
-      recheck.addEventListener('click', function(){
-        var before = APP.notifPerm;
-        refreshNotifPerm();
-        if (Notification.permission === before) {
-          APP.notifMsg = 'I dalje blokirano. Provjeri korake iznad pa dodirni ponovo.';
-          render();
-        }
-      });
-      how.appendChild(recheck);
-      nc.appendChild(how);
-    }
-
-    if (APP.notifMsg) {
-      var nmsg = mk('div',{style:'font-size:12px;color:#6e6e77;line-height:1.6;padding-top:10px'});
-      nmsg.textContent = APP.notifMsg;
-      nc.appendChild(nmsg);
-    }
-    page.appendChild(nc);
-
-    var inf=mk('div',{class:'card',style:'border-color:transparent'});
-    var infp=mk('p',{style:'font-size:12px;color:#86868f;line-height:1.7'});
-    infp.textContent='Za pozadinske notifikacije: instaliraj app (Add to Home Screen) i dozvoli notifikacije. Podaci su lokalni na uređaju.';
-    inf.appendChild(infp); page.appendChild(inf);
-
-    var rc = mk('div',{class:'card'});
-    var rct=mk('div',{class:'card-title'}); rct.textContent='Pouzdanost alarma'; rc.appendChild(rct);
-    var rp1=mk('p',{style:'font-size:12px;color:#86868f;line-height:1.7;margin-bottom:10px'});
-    rp1.textContent='Android može ugasiti app u pozadini, pa alarm ne zazvoni tačno na vrijeme — u tom slučaju zazvoni kao "zakasnio" čim sljedeći put otvoriš app. Za najpouzdaniji rad:';
-    rc.appendChild(rp1);
-    ['Isključi optimizaciju baterije za ovu app (Settings → Apps → Battery → Bez ograničenja)',
-     'Uključi Autostart za ovu app (Settings → Apps → Autostart)',
-     'Zaključaj app u pregledu nedavnih (Recents) — dugi pritisak na app karticu → Lock'
-    ].forEach(function(step) {
-      var line = mk('div',{style:'font-size:12px;color:#86868f;line-height:1.7;margin-bottom:3px'});
-      line.textContent = '• ' + step;
-      rc.appendChild(line);
-    });
-    page.appendChild(rc);
-
-    var vc = mk('div',{class:'card'});
-    var vct=mk('div',{class:'card-title'}); vct.textContent='O aplikaciji'; vc.appendChild(vct);
-    var vrow=mk('div',{class:'srow'});
-    var vrl=mk('div'); var vrll=mk('div',{class:'srow-label'}); vrll.textContent='Verzija'; vrl.appendChild(vrll);
-    var vrls=mk('div',{class:'srow-sub'});
-    vrls.textContent = APP.swUpdateAvailable ? APP_VERSION + ' (učitana) — nova je dostupna' : APP_VERSION;
-    vrl.appendChild(vrls); vrow.appendChild(vrl);
-    var vb=mk('button');
-    vb.textContent = APP.swUpdateAvailable ? 'Osvježi' : 'Provjeri';
-    vb.addEventListener('click', function(){
-      if (APP.swUpdateAvailable) { applySWUpdate(); return; }
-      if (APP.swReg) {
-        vb.textContent = '...';
-        APP.swReg.update().then(function(){
-          if (!APP.swUpdateAvailable) { vb.textContent = 'Ažurno ✓'; setTimeout(function(){ vb.textContent='Provjeri'; }, 2000); }
-        }).catch(function(){ vb.textContent = 'Provjeri'; });
-      }
-    });
-    vrow.appendChild(vb); vc.appendChild(vrow);
-    page.appendChild(vc);
-  }
-
-  // Install prompt banner
   if (APP.installPrompt && !APP.installDismissed) {
     var ib = mk('div',{class:'install-bar'});
     var iico = mk('div',{class:'install-bar-icon'});
-    var iimg = mk('img',{src:'icon-192.png',alt:''}); iico.appendChild(iimg); ib.appendChild(iico);
+    iico.appendChild(mk('img',{src:'icon-192.png',alt:''}));
+    ib.appendChild(iico);
     var itxt = mk('div',{class:'install-bar-text'});
-    var is1 = mk('strong'); is1.textContent='Instaliraj aplikaciju'; itxt.appendChild(is1);
-    var is2 = mk('span'); is2.textContent='Dodaj na početni ekran'; itxt.appendChild(is2);
+    itxt.appendChild(textEl('strong',null,'Instaliraj aplikaciju'));
+    itxt.appendChild(textEl('span',null,'Dodaj na početni ekran'));
     ib.appendChild(itxt);
     var ibtn = mk('button',{class:'install-bar-btn'}); ibtn.textContent='Instaliraj';
     ibtn.addEventListener('click', function(){
@@ -1231,13 +1678,10 @@ function renderMain() {
     });
     ib.appendChild(ibtn);
     var iclose = mk('button',{class:'install-bar-close'}); iclose.textContent='×';
-    iclose.addEventListener('click', function(){
-      APP.installDismissed = true; lsSet('install_dismissed', true); render();
-    });
+    iclose.addEventListener('click', function(){ APP.installDismissed=true; lsSet('install_dismissed',true); render(); });
     ib.appendChild(iclose);
     page.appendChild(ib);
-    // Add bottom padding so content isn't hidden behind the bar
-    page.style.paddingBottom = '100px';
+    page.style.paddingBottom = 'calc(100px + env(safe-area-inset-bottom))';
   }
 
   return page;
@@ -1249,19 +1693,22 @@ function render() {
   app.innerHTML = '';
   var view;
   if (APP.alarm) view = renderAlarm();
-  else if (!APP.pin) view = renderSetup();
-  else if (APP.view === 'setup') view = renderSetup();
+  else if (!APP.pin || APP.view === 'setup') view = renderSetup();
   else view = renderMain();
   app.appendChild(view);
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
+applyTheme();
 APP.pin = lsGet('app_pin','');
 APP.installDismissed = !!lsGet('install_dismissed', false);
 APP.notifAsked = !!lsGet('notif_asked', false);
 APP.calSelDate = todayKey();
 initSW();
 if (('Notification' in window) && Notification.permission === 'granted') subscribeToPush();
+
+// Re-arm everything with the service worker on every load. Cheap, idempotent,
+// and the only thing that recovers a schedule the OS wiped along with the SW.
 getRems().filter(function(r){ return !r.fired; }).forEach(function(r){ scheduleRem(r); });
 getEvents().filter(function(e){ return !e.fired; }).forEach(function(e){ scheduleEvent(e); });
 
@@ -1273,15 +1720,17 @@ getEvents().filter(function(e){ return !e.fired; }).forEach(function(e){ schedul
   if (alarmParam) {
     try {
       var d = JSON.parse(decodeURIComponent(alarmParam));
+      // The SW already rang this one and set the guard, so triggerAlarm would
+      // bail out — go straight to the queue to show the PIN screen.
       if (d && d.type === 'ALARM') {
-        // Delay to let the page fully render before showing alarm screen
-        setTimeout(function() { triggerAlarm(d); }, 300);
+        setTimeout(function() {
+          enqueueAlarm({ id:d.id, title:d.title || 'Podsjetnik', note:d.note || '', late:!!d.late });
+        }, 300);
       }
     } catch(e) {}
     history.replaceState(null, '', location.pathname);
   } else if (actionParam && APP.pin) {
-    // Manifest shortcuts: ?action=add | calendar | notes
-    var tabs = { add: 'add', calendar: 'calendar', notes: 'notes' };
+    var tabs = { add:'add', calendar:'calendar', notes:'notes' };
     if (tabs[actionParam]) APP.tab = tabs[actionParam];
     history.replaceState(null, '', location.pathname);
   }

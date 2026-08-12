@@ -18,7 +18,10 @@ CREATE TABLE IF NOT EXISTS reminders (
   title      TEXT NOT NULL,
   note       TEXT,
   fire_at    INTEGER NOT NULL,
-  repeat     TEXT NOT NULL DEFAULT 'once', -- once | daily | weekdays
+  repeat     TEXT NOT NULL DEFAULT 'once', -- once | daily | weekdays | custom
+  days       TEXT,                          -- JSON array of weekday numbers (0=Sun), only for repeat='custom'
+  time       TEXT,                          -- local clock time 'HH:MM', so the server can recompute in the user's zone
+  tz         TEXT,                          -- IANA zone from the phone, e.g. 'Europe/Sarajevo'
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_reminders_fire ON reminders(fire_at);

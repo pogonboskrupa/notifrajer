@@ -8,99 +8,150 @@ uređaj, čak i kad je app satima u pozadini.
 
 Lokalno planiranje u `sw.js` ostaje kao brzi, precizni put kad je app
 nedavno korišten; ovo je sigurnosna mreža koja hvata slučajeve kad lokalni
-tajmer ne uspije.
+tajmer ne uspije. App radi i **bez** ovoga — dok ne postaviš server, alarmi
+rade lokalno kao i do sada.
 
-## Šta ti treba
+---
 
-- Besplatan Cloudflare nalog: https://dash.cloudflare.com/sign-up
-- Node.js (već ga imaš ako si ovo čitao preko repoa)
+# A) Postavljanje preko telefona (bez terminala)
 
-## Koraci
+Sve ide kroz web sučelje na `dash.cloudflare.com`. Treba ti besplatan
+Cloudflare nalog.
 
-### 1. Instaliraj wrangler i prijavi se
+### 1. Generiši VAPID ključeve
+
+Otvori na telefonu: **`https://tvoj-domen/vapid-generator.html`**
+(isti domen gdje ti je app — fajl je u repou).
+
+Dodirni **Generiši ključeve**. Dobiješ dva:
+
+| Ključ | Gdje ide | Tajno? |
+|---|---|---|
+| `VAPID_PUBLIC_KEY` | Worker varijabla + `index.html` | ne |
+| `VAPID_PRIVATE_KEY_JWK` | Worker **secret** | **da** |
+
+Kopiraj oba negdje (Notes, Keep) — trebaju ti u koracima ispod. Stranica ih
+generiše u pregledniku i nigdje ne šalje, pa nestaju kad je zatvoriš.
+
+### 2. Napravi bazu (D1)
+
+`dash.cloudflare.com` → **Storage & Databases** → **D1** → **Create database**
+
+- Ime: `notifrajer-push` → **Create**
+
+Otvori je → tab **Console** → zalijepi sadržaj fajla `worker/schema.sql`
+→ **Execute**. Treba javiti da je uspjelo.
+
+### 3. Napravi Worker
+
+**Compute (Workers)** → **Create** → **Start from Hello World** → **Create**
+
+- Ime: `notifrajer-push`
+
+### 4. Zalijepi kod
+
+Na Workeru dodirni **Edit code** (ili `</>`). Otvori se editor sa `worker.js`
+i nekim primjerom koda.
+
+- **Označi sav postojeći kod i obriši ga**
+- Zalijepi **cijeli** sadržaj fajla `worker/dashboard-worker.js`
+  (to je verzija bez `import`-a, spremljena baš za ovaj editor)
+- **Deploy**
+
+### 5. Poveži bazu i upiši ključeve
+
+Na Workeru → **Settings** → **Bindings** → **Add**:
+
+| Tip | Ime | Vrijednost |
+|---|---|---|
+| D1 database | `DB` | `notifrajer-push` |
+| Text (Variable) | `VAPID_PUBLIC_KEY` | javni ključ iz koraka 1 |
+| Text (Variable) | `VAPID_SUBJECT` | `mailto:tvoj@email.com` |
+| **Secret** | `VAPID_PRIVATE_KEY_JWK` | cijeli JSON `{"crv":...}` iz koraka 1 |
+
+Privatni ključ mora ići kao **Secret**, ne kao obična varijabla.
+
+### 6. Uključi cron (svaku minutu)
+
+**Settings** → **Trigger Events** → **Add** → **Cron Trigger** → `* * * * *`
+
+Bez ovoga baza se puni ali niko ne šalje notifikacije.
+
+### 7. Poveži app sa serverom
+
+Adresa Workera piše na njegovoj stranici, oblika
+`https://notifrajer-push.tvoj-nalog.workers.dev`.
+
+U `index.html` (vrh skripte) i u `sw.js` (vrh fajla) upiši:
+
+```js
+var PUSH_SERVER_URL = 'https://notifrajer-push.tvoj-nalog.workers.dev';
+var VAPID_PUBLIC_KEY = 'javni ključ iz koraka 1';   // samo u index.html
+```
+
+```js
+const PUSH_SERVER_URL = 'https://notifrajer-push.tvoj-nalog.workers.dev';  // sw.js
+```
+
+Commit → push → redeploy PWA. Ako koristiš Android paket, ponovo ga napravi
+na PWABuilderu.
+
+### 8. Provjeri
+
+U app-u: **⚙ → Notifikacije → Test alarma → Pokreni**, pa **zatvori app**.
+Ako notifikacija dođe dok je app zatvoren, radi.
+
+U Worker logovima (**Observability → Logs**) vidiš zahtjeve uživo.
+
+---
+
+# B) Postavljanje preko terminala (wrangler)
+
+Isto, samo brže ako imaš Node.js na računaru.
 
 ```bash
 cd worker
 npm install
 npx wrangler login
-```
 
-Ovo otvara browser za prijavu na Cloudflare nalog.
-
-### 2. Generiši VAPID ključeve (tvoje, ne moje iz razgovora)
-
-```bash
-node generate-vapid-keys.js
-```
-
-Ispisat će dvije stvari — sačuvaj oboje, trebat će ti u koracima ispod.
-
-### 3. Napravi D1 bazu
-
-```bash
+node generate-vapid-keys.js          # ključevi
 npx wrangler d1 create notifrajer-push
-```
-
-Ispisat će nešto poput:
-```toml
-[[d1_databases]]
-binding = "DB"
-database_name = "notifrajer-push"
-database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-```
-
-Kopiraj taj `database_id` i zamijeni `REPLACE_WITH_YOUR_D1_DATABASE_ID` u
-`wrangler.toml`.
-
-### 4. Primijeni šemu na bazu
-
-```bash
+# → prepiši database_id u wrangler.toml
 npx wrangler d1 execute notifrajer-push --remote --file=schema.sql
-```
 
-### 5. Upiši VAPID javni ključ u wrangler.toml
-
-Otvori `wrangler.toml`, u `[vars]` sekciji zamijeni:
-- `VAPID_PUBLIC_KEY` → javni ključ iz koraka 2
-- `VAPID_SUBJECT` → `mailto:tvoj-email@nesto.com` (bilo koji validan email, koristi ga push servis samo ako treba kontaktirati vlasnika)
-
-### 6. Upiši privatni ključ kao secret (NIKAD u wrangler.toml)
-
-```bash
+# javni ključ + email u [vars] u wrangler.toml, pa:
 npx wrangler secret put VAPID_PRIVATE_KEY_JWK
-```
-
-Zalijepi JSON iz koraka 2 (cijeli red počevši sa `{"crv":...`) kad te pita.
-
-### 7. Deploy
-
-```bash
 npx wrangler deploy
+npx wrangler tail                    # logovi uživo
 ```
 
-Ispisat će URL poput `https://notifrajer-push.tvoj-nalog.workers.dev` —
-to je URL koji ide u `index.html` (vidi ispod).
+Zatim korak 7 odozgo (upiši URL u `index.html` i `sw.js`).
 
-### 8. Poveži app s workerom
+---
 
-U `index.html`, na vrhu skripte, postavi:
-```js
-var PUSH_SERVER_URL = 'https://notifrajer-push.tvoj-nalog.workers.dev';
-var VAPID_PUBLIC_KEY = 'javni ključ iz koraka 2';
-```
+## Dvije verzije istog koda
 
-Commit, push, redeploy PWA (i ponovo napravi PWABuilder paket ako koristiš
-Android app).
+- `src/index.js` + `src/webpush.js` — za wrangler (`npx wrangler deploy`)
+- `dashboard-worker.js` — isto to spojeno u jedan fajl bez `import`-a, za
+  copy-paste u web editor
 
-## Provjera da radi
+Ako mijenjaš logiku, mijenjaj **oba** ili odaberi jedan put i drugi obriši.
 
-```bash
-npx wrangler tail
-```
+## Kako se izbjegava dupli alarm
 
-Ovo prati logove uživo. Otvori app na telefonu, dozvoli notifikacije, dodaj
-podsjetnik za par minuta unaprijed — trebao bi vidjeti zahtjeve u logu, i
-cron worker bi trebao pokušati poslati push kad dođe vrijeme.
+Alarm može zazvoniti iz dva izvora — lokalnog tajmera na telefonu i push-a
+sa servera. Da ne zazvoni dvaput:
+
+- kad telefon odzvoni sam, javi serveru (`/api/cancel`) da preskoči taj
+- kad stigne push, `sw.js` provjeri je li taj alarm već odzvonio u zadnjih
+  5 minuta i ako jest — ignoriše ga
+
+## Ponavljanje i vremenske zone
+
+Worker radi u UTC-u, a telefon u tvojoj zoni. Zato klijent uz svaki alarm
+šalje i lokalno vrijeme (`HH:MM`) i IANA zonu (npr. `Europe/Sarajevo`), pa
+server računa sljedeće zvonjenje u tvom lokalnom vremenu. Bez toga bi alarm
+u 23:45 preko prelaska na ljetno vrijeme završio na pogrešnom **danu**.
 
 ## Sigurnosna napomena
 
